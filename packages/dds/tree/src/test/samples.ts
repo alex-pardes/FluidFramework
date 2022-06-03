@@ -5,6 +5,48 @@
 
 import { Sibling, Sequenced as S } from "../format";
 
+export namespace PreviousInsert {
+    export const e1: S.Transaction = {
+        ref: 0,
+        seq: 1,
+        frames: [{
+            marks: {
+                foo: [
+                    3,
+                    { type: "Insert", op: 0, content: [{ id: "0" }] },
+                ],
+            },
+        }],
+    };
+
+    export const e2: S.Transaction = {
+        ref: 0,
+        seq: 2,
+        frames: [{
+            marks: {
+                foo: [
+                    4,
+                    { type: "Insert", op: 0, content: [{ id: "0" }] },
+                ],
+            },
+        }],
+    };
+
+    export const e2_r_e1: S.Transaction = {
+        ref: 0,
+        newRef: 1,
+        seq: 2,
+        frames: [{
+            marks: {
+                foo: [
+                    5,
+                    { type: "Insert", op: 0, content: [{ id: "0" }] },
+                ],
+            },
+        }],
+    };
+}
+
 export namespace InterleavedInserts {
     /*
     Starting state foo=[A B C D]
@@ -16,7 +58,7 @@ export namespace InterleavedInserts {
         frames: [{
             marks: {
                 foo: [
-                    { type: "Insert", op: 0, content: [{ id: "O" }] },
+                    { type: "Insert", op: 0, content: [{ id: "0" }] },
                     1,
                     { type: "Insert", op: 1, content: [{ id: "1" }] },
                     { type: "Insert", op: 2, content: [{ id: "2" }] },
@@ -33,7 +75,7 @@ export namespace InterleavedInserts {
         frames: [{
             marks: {
                 foo: [
-                    { type: "Insert", op: 0, content: [{ id: "O" }] },
+                    { type: "Insert", op: 0, content: [{ id: "0" }] },
                     1,
                     { type: "Insert", op: 1, content: [{ id: "1" }], side: Sibling.Next },
                     { type: "Insert", op: 2, content: [{ id: "2" }], side: Sibling.Prev },
@@ -51,7 +93,7 @@ export namespace InterleavedInserts {
         frames: [{
             marks: {
                 foo: [
-                    { type: "Insert", op: 0, content: [{ id: "O" }] },
+                    { type: "Insert", op: 0, content: [{ id: "0" }] },
                     4,
                     { type: "Insert", op: 1, content: [{ id: "1" }], side: Sibling.Next },
                     { type: "Insert", op: 2, content: [{ id: "2" }], side: Sibling.Prev },
@@ -75,7 +117,7 @@ export namespace ChangesInDeepTraits {
                         bar: [{
                             type: "Modify",
                             modify: {
-                                baz: [{ type: "Insert", op: 0, content: [{ id: "O" }] }],
+                                baz: [{ type: "Insert", op: 0, content: [{ id: "0" }] }],
                             },
                         }],
                     },
@@ -97,7 +139,7 @@ export namespace ChangesInDeepTraits {
                             modify: {
                                 baz: [
                                     1,
-                                    { type: "Insert", op: 0, content: [{ id: "O" }] },
+                                    { type: "Insert", op: 0, content: [{ id: "0" }] },
                                 ],
                             },
                         }],
@@ -121,7 +163,7 @@ export namespace ChangesInDeepTraits {
                             modify: {
                                 baz: [
                                     2,
-                                    { type: "Insert", op: 0, content: [{ id: "O" }] },
+                                    { type: "Insert", op: 0, content: [{ id: "0" }] },
                                 ],
                             },
                         }],

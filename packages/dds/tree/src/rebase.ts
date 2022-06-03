@@ -51,15 +51,19 @@ function rebaseOverFrame(
 	base: R.ChangeFrame,
 	baseSeq: SeqNumber,
 ): void {
-    for (const trait of Object.keys(orig.marks)) {
-        rebaseMarks(orig.marks[trait], base.marks[trait] ?? []);
+    rebaseNodeMarks(orig.marks, base.marks);
+}
+
+function rebaseNodeMarks(
+    orig: R.NodeMarks,
+    base: R.NodeMarks,
+): void {
+    for (const trait of Object.keys(orig)) {
+        rebaseTraitMarks(orig[trait], base[trait] ?? []);
     }
 }
 
-// TODO: Build better interface for TraitMarks
-// Probably iterator of type OffsetMark = { mark, offset}
-
-function rebaseMarks(
+function rebaseTraitMarks(
 	curr: R.TraitMarks,
 	base: R.TraitMarks,
 ): void {
@@ -71,21 +75,29 @@ function rebaseMarks(
         const currMark = getMark(currIterator);
         const baseMark = getMark(baseIterator);
         const cmp = compare(currMark, baseMark);
-        if (cmp < 0) {
-            adjustOffset(currIterator, sizeChange);
+        if (cmp === 0) {
+            // This if block should always run.
+            if (currMark.mark.type === "Modify" && baseMark.mark.type === "Modify") {
+                console.log("Descending");
+                rebaseNodeMarks(currMark.mark.modify, baseMark.mark.modify);
+                console.log("Ascending");
+            }
+        }
+        if (cmp <= 0) {
+            console.log(`Advancing over curr ${currMark.mark.type}`);
+            adjustOffsetAndAdvance(currIterator, sizeChange);
             sizeChange = 0;
             advance(currIterator);
-        } else if (cmp > 0) {
+        }
+        if (cmp >= 0) {
+            console.log(`Advancing over base ${baseMark.mark.type}`);
             sizeChange += getSizeChange(baseMark.mark);
             advance(baseIterator);
-        } else {
-            advance(currIterator);
-            adjustOffset(currIterator, sizeChange);
-            sizeChange = 0;
-
-            // This case should only happen when both marks are `Modify`, so baseMark should have no size change.
-            advance(baseIterator);
         }
+    }
+
+    if (isValid(currIterator)) {
+        adjustOffsetAndAdvance(currIterator, sizeChange);
     }
 }
 
@@ -94,19 +106,20 @@ interface MarkWithIndex {
     index: Index;
 }
 
-function compare(newerMark: MarkWithIndex, olderMark: MarkWithIndex): number {
-    const cmp = newerMark.index - olderMark.index;
+function compare(currMark: MarkWithIndex, baseMark: MarkWithIndex): number {
+    const cmp = currMark.index - baseMark.index;
     if (cmp !== 0) {
         return cmp;
     }
 
-    const side = getSide(newerMark.mark);
+    const side = getSide(currMark.mark);
     switch (side) {
         case Sibling.Prev:
             return -1;
         case Sibling.Next:
             return 1;
         default:
+            // No side implies this is a modify? Should come after other mark unless it is also a modify.
             return 0;
     }
 }
@@ -143,22 +156,34 @@ function getNextOffset(iterator: TraitMarksIterator): Offset {
 }
 
 function advance(iterator: TraitMarksIterator) {
-    iterator.traitIndex += getNextOffset(iterator);
+    advanceI(iterator, getNextOffset(iterator));
+}
+
+function advanceI(iterator: TraitMarksIterator, offset: Offset) {
+    iterator.traitIndex += offset;
     const markLength = hasOffset(iterator) ? 2 : 1;
     iterator.markIndex += markLength;
 }
 
-function adjustOffset(iterator: TraitMarksIterator, delta: number) {
+function adjustOffsetAndAdvance(iterator: TraitMarksIterator, delta: number) {
+    if (delta === 0) {
+        return;
+    }
+    let prevOffset = 0;
     if (hasOffset(iterator)) {
-        const newOffset = iterator.marks[iterator.markIndex] as number + delta;
+        prevOffset = iterator.marks[iterator.markIndex] as number;
+        const newOffset = prevOffset + delta;
         if (newOffset === 0) {
             iterator.marks.splice(iterator.markIndex, 1);
         } else {
             iterator.marks[iterator.markIndex] = newOffset;
         }
-    } else if (delta > 0) {
+    } else {
+        // Delta should be positive here
         iterator.marks.splice(iterator.markIndex, 0, delta);
     }
+
+    advanceI(iterator, prevOffset);
 }
 
 function getSizeChange(mark: R.Mark): number {

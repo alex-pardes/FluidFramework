@@ -73,7 +73,7 @@ export namespace Original {
 
     export interface ChangeFrame {
         moves?: MoveEntry[];
-        marks: { [key: string]: TraitMarks; };
+        marks: NodeMarks;
     }
 
     export interface SetValue {
@@ -81,16 +81,16 @@ export namespace Original {
         value: Value | [Value, DrillDepth];
     }
 
-    export interface Modify<TInner = Mark, AllowSetValue extends boolean = true> {
+    export interface Modify<TMark = Mark> {
         type?: "Modify";
-        /**
-         * We need this setValue (in addition to the SetValue mark because non-leaf nodes can have values)
-         */
-        value?: If<AllowSetValue, Value | [Value, DrillDepth] | { seq: SeqNumber; }>;
-        modify?: { [key: string]: (Offset | TInner | Modify<TInner, AllowSetValue>)[]; };
+        modify: NodeMarks;
     }
 
-    export type TraitMarks = (Offset | Mark)[];
+    export interface NodeMarks<TMark = Mark> {
+        [key: string]: TraitMarks<TMark>;
+    }
+
+    export type TraitMarks<TMark = Mark> = (Offset | TMark)[];
 
     export type ModsMark =
         | SetValue
@@ -111,10 +111,6 @@ export namespace Original {
 
     export type Mark =
         | ObjMark;
-
-    export interface HasMods {
-        mods?: (Offset | ModsMark)[];
-    }
 
     export interface Place {
         /**
@@ -145,16 +141,16 @@ export namespace Original {
         drill?: DrillDepth;
     }
 
-    export interface Insert extends Place, HasMods, HasOpId {
+    export interface Insert extends Place, HasOpId {
         type: "Insert";
         content: ProtoNode[];
     }
 
-    export interface MoveInSet extends Place, HasMods, HasOpId {
+    export interface MoveInSet extends Place, HasOpId {
         type: "MoveInSet";
     }
 
-    export interface MoveInSlice extends Place, HasMods, HasLength, HasOpId {
+    export interface MoveInSlice extends Place, HasLength, HasOpId {
         type: "MoveInSlice";
     }
 
@@ -165,19 +161,6 @@ export namespace Original {
      */
     export interface Delete extends HasLength {
         type: "Delete";
-        /**
-         * Applying a Delete over existing Modify marks has the follow effects on them and their descendants:
-         * (These effects are also applied to Modify marks over which a slice-deletion is performed)
-         * - setValue: removed
-         * - SetValue: replaced by an offset of 1
-         * - Insert: removed
-         * - MoveIn from MoveOut: MoveIn is removed, the corresponding MoveOut becomes a Delete
-         * - MoveIn from MoveOutStart: MoveIn is removed, the corresponding MoveOutStart becomes a StartDelete
-         * - Delete: replaced by an offset
-         * - MoveOut: preserved as is
-         * - MoveOutStart+End: preserved as is
-         */
-        mods?: (Offset | Modify<MoveOut | MoveOutStart | SliceEnd, false>)[];
     }
 
     /**
@@ -185,21 +168,6 @@ export namespace Original {
      */
     export interface MoveOut extends HasLength, HasOpId {
         type: "MoveOut";
-        /**
-         * Applying a MoveOut over existing Modify marks has the follow effects on them and their descendants:
-         * (These effects are also applied to Modify marks over which a slice-move-out is performed)
-         * - setValue: transplanted to the target location of the move.
-         * - SetValue: replaced by an offset of 1 and transplanted to the target location of the move.
-         * - Insert: transplanted to the target location of the move.
-         * - MoveIn from MoveOut: transplanted to the target location of the move. The corresponding MoveOut
-         *   is updated.
-         * - MoveIn from MoveOutStart: transplanted to transplanted to the target location of the move. The
-         *   corresponding MoveOutStart is updated.
-         * - Delete: replaced by an offset
-         * - MoveOut: preserved as is
-         * - MoveOutStart+End: preserved as is
-         */
-        mods?: (Offset | Modify<MoveOut | MoveOutStart | SliceEnd, false>)[];
     }
 
     /**
@@ -351,8 +319,7 @@ export namespace Original {
  */
 export namespace Rebased {
     // Use "interface" instead "type" to avoid TSC error
-    export interface Modify<TInner = Mark, AllowSetValue extends boolean = true> extends
-        Original.Modify<TInner, AllowSetValue> { }
+    export type Modify = Original.Modify<Mark>;
     export type IsSliceStart = Original.IsSliceStart;
     export type MoveOutStart = Original.MoveOutStart;
     export type DeleteStart = Original.DeleteStart;
@@ -427,9 +394,8 @@ export namespace Rebased {
         seq?: SeqNumber;
     }
 
-    export type TraitMark = Offset | Mark;
-    export type TraitMarks = TraitMark[];
-    export type ModsTrail = (Offset | ModsMark)[];
+    export type TraitMarks<TMark = Mark> = Original.TraitMarks<TMark>;
+    export interface NodeMarks<TMark = Mark> extends Original.NodeMarks<TMark> { }
 
     export type ModsMark =
         | RevertValue
@@ -477,24 +443,20 @@ export namespace Rebased {
         return typeof mark === "number";
     }
 
-    export interface HasMods {
-        mods?: ModsTrail;
-    }
-
     export interface RevertValue extends HasSeqNumber {
         type: "RevertValue";
     }
 
-    export interface Insert extends Place, HasMods {
+    export interface Insert extends Place {
         type: "Insert";
         content: ProtoNode[];
     }
 
-    export interface MoveInSet extends Place, HasLength, HasMods, HasOpId {
+    export interface MoveInSet extends Place, HasLength, HasOpId {
         type: "MoveInSet";
     }
 
-    export interface MoveInSlice extends Place, HasLength, HasMods, HasOpId {
+    export interface MoveInSlice extends Place, HasLength, HasOpId {
         type: "MoveInSlice";
     }
 
@@ -505,8 +467,6 @@ export namespace Rebased {
      */
     export interface Delete extends HasLength {
         type: "Delete";
-        // mods?: (Offset | Modify<Mark, false>)[];
-        mods?: ModsTrail;
     }
 
     /**
@@ -514,11 +474,9 @@ export namespace Rebased {
      */
     export interface MoveOut extends HasOpId, HasLength {
         type: "MoveOut";
-        // mods?: (Offset | Modify<Mark, false>)[];
-        mods?: ModsTrail;
     }
 
-    export interface PriorDetach extends HasSeqNumber, HasLength, HasMods {
+    export interface PriorDetach extends HasSeqNumber, HasLength {
         type: "PriorDetach";
     }
 
@@ -534,15 +492,15 @@ export namespace Rebased {
         type: "PriorSliceEnd";
     }
 
-    export interface ReviveSet extends HasSeqNumber, HasLength, HasMods {
+    export interface ReviveSet extends HasSeqNumber, HasLength {
         type: "ReviveSet";
     }
 
-    export interface ReturnSet extends HasSeqNumber, HasLength, HasMods, HasOpId {
+    export interface ReturnSet extends HasSeqNumber, HasLength, HasOpId {
         type: "ReturnSet";
     }
 
-    export interface ReviveSlice extends HasSeqNumber, HasLength, HasMods, HasOpId {
+    export interface ReviveSlice extends HasSeqNumber, HasLength, HasOpId {
         type: "ReviveSlice";
     }
 
@@ -552,9 +510,7 @@ export namespace Rebased {
 }
 
 export namespace Squashed {
-    // Use "interface" instead "type" to avoid TSC error
-    export interface Modify<TInner = Mark, AllowSetValue extends boolean = true> extends
-        Original.Modify<TInner, AllowSetValue> { }
+    export type Modify = Original.Modify;
     export type HasSeqNumber = Rebased.HasSeqNumber;
     export type HasSliceId = Rebased.HasOpId;
     export type MoveEntry = Rebased.MoveEntry;
@@ -566,7 +522,6 @@ export namespace Squashed {
     export type RevertValue = Rebased.RevertValue;
     export type Place = Original.Place;
     export type Mark = Rebased.Mark;
-    export type TraitMark = Rebased.TraitMark;
     export type TraitMarks = Rebased.TraitMarks;
     export type ProtoNode = Rebased.ProtoNode;
     export type SetValue = Rebased.SetValue;
@@ -578,131 +533,6 @@ export namespace Squashed {
         moves?: MoveEntry[];
         marks: TraitMarks;
     }
-
-    // 	export type TraitMark = Offset | Mark;
-    // 	export type TraitMarks = TraitMark[];
-
-    // 	export type ModsMark =
-    // 		| RevertValue
-    // 		| SetValue
-    // 		| Modify;
-    // 	export type AttachMark =
-    // 		| Insert
-    // 		| MoveIn;
-    // 	export type DetachMark =
-    // 		| MoveOut
-    // 		| Delete;
-    // 	export type SegmentMark =
-    // 		| AttachMark
-    // 		| DetachMark;
-    // 	export type SliceBound =
-    // 		| MoveOutStart
-    // 		| DeleteStart
-    // 		| SliceEnd;
-    // 	export type ObjMark =
-    // 		| ModsMark
-    // 		| SegmentMark
-    // 		| SliceBound
-    // 		| Return
-    // 		| Revive
-    // 		| Prior;
-
-    // 	export type Mark =
-    // 		| ObjMark;
-
-    // 	export type OpId = number;
-
-    // 	export interface Provision {
-    // 		seq: SeqNumber;
-    // 		opId: OpId;
-    // 		offset?: number;
-    // 	}
-
-    // 	export interface HasMods {
-    // 		mods?: (Offset | ModsMark)[];
-    // 	}
-
-    // 	export interface SetValue {
-    // 		type: "SetValue";
-    // 		value: Value | [Value, DrillDepth];
-    // 	}
-
-    // 	export interface Insert extends Place {
-    // 		type: "Insert";
-    // 		provision?: Provision;
-    // 		content: ProtoNode[];
-    // 	}
-
-    // 	export interface MoveIn extends Place, HasLength, HasMods, HasSliceId {
-    // 		type: "MoveIn";
-    // 		provision?: Provision;
-    // 	}
-
-    // 	/**
-    // 	 * Used for set-like ranges and atomic ranges.
-    // 	 */
-    // 	export interface Delete extends HasLength {
-    // 		type: "Delete";
-    // 		provision?: Provision;
-    // 		// mods?: (Offset | Modify<Mark, false>)[];
-    // 		mods?: (Offset | ModsMark)[];
-    // 	}
-
-    // 	/**
-    // 	 * Used for set-like ranges and atomic ranges.
-    // 	 */
-    // 	export interface MoveOut extends HasLength, HasSliceId {
-    // 		type: "MoveOut";
-    // 		provision?: Provision;
-    // 		// mods?: (Offset | Modify<Mark, false>)[];
-    // 		mods?: (Offset | ModsMark)[];
-    // 	}
-
-    // 	export interface SliceStart extends HasSliceId {
-    // 		/**
-    // 		 * Omit if `Sibling.Prev` for terseness.
-    // 		 */
-    // 		side?: Sibling;
-    // 		/**
-    // 		 * Omit if not in peer change.
-    // 		 * Omit if `Tiebreak.LastToFirst` for terseness.
-    // 		 */
-    // 		tiebreak?: Tiebreak.FirstToLast;
-    // 		/**
-    // 		 * Omit if no drill-down.
-    // 		 */
-    // 		drill?: DrillDepth;
-    // 	}
-
-    // 	export interface MoveOutStart extends SliceStart {
-    // 		type: "MoveOutStart";
-    // 	}
-
-    // 	export interface DeleteStart extends SliceStart {
-    // 		type: "DeleteStart";
-    // 	}
-
-    // 	export interface PriorDetach extends HasSeqNumber, HasLength, HasMods {
-    // 		type: "Detach";
-    // 	}
-
-    // 	export type Prior = PriorDetach;// | PriorAttach | PriorTemp;
-
-    // 	/**
-    // 		 * The contents of a node to be created
-    // 		 */
-    // 	export interface ProtoNode {
-    // 		id: string;
-    // 		type?: string;
-    // 		value?: Value;
-    // 		traits?: ProtoTraits;
-    // 	}
-
-    // 	export interface ProtoTraits {
-    // 		[key: string]: ProtoTrait;
-    // 	}
-
-    // 	export type ProtoTrait = (ProtoNode | MoveIn)[];
 }
 
 export namespace Sequenced {

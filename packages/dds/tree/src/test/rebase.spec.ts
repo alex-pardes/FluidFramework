@@ -12,6 +12,7 @@ import {
 import {
     ChangesInDeepTraits,
 	InterleavedInserts,
+    PreviousInsert,
 } from "./samples";
 import { deepFreeze } from "./utils";
 
@@ -23,6 +24,13 @@ function rebase(original: R.Transaction, base: S.Transaction): R.Transaction {
 
 describe(rebase.name, () => {
 	describe("Scenarios", () => {
+		describe("Previous insert", () => {
+			it("e2", () => {
+				const actual = rebase(PreviousInsert.e2, PreviousInsert.e1);
+				assert.deepEqual(actual, PreviousInsert.e2_r_e1);
+			});
+		});
+
 		describe("Interleaved inserts", () => {
 			it("e2", () => {
 				const actual = rebase(InterleavedInserts.e2, InterleavedInserts.e1);
