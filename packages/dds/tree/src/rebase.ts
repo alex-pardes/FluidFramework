@@ -17,8 +17,8 @@ import {
 } from "./utils";
 
 export function rebase(original: R.Transaction, base: S.Transaction): R.Transaction {
-	return {
-		ref: original.ref,
+    return {
+        ...original,
 		newRef: base.seq,
 		frames: original.frames.map((frame) => rebaseFrame(frame, original, base)),
 	};

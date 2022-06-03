@@ -3,7 +3,7 @@
  * Licensed under the MIT License.
  */
 
-import { Commutativity, Original, Rebased as R, Sibling, Sequenced as S, Squashed as Sq, Tiebreak } from "../format";
+import { Rebased as R, Sibling, Sequenced as S } from "../format";
 
 export namespace InterleavedInserts {
     /*
@@ -44,8 +44,9 @@ export namespace InterleavedInserts {
         }],
     };
 
-    export const e2_r_e1: R.Transaction = {
+    export const e2_r_e1: S.Transaction = {
         ref: 0,
+        seq: 2,
         newRef: 1,
         frames: [{
             marks: {
