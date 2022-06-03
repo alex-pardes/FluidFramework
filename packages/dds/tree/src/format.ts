@@ -73,7 +73,7 @@ export namespace Original {
 
     export interface ChangeFrame {
         moves?: MoveEntry[];
-        marks: TraitMarks;
+        marks: { [key: string]: TraitMarks; };
     }
 
     export interface SetValue {
@@ -145,7 +145,7 @@ export namespace Original {
         drill?: DrillDepth;
     }
 
-    export interface Insert extends Place, HasMods {
+    export interface Insert extends Place, HasMods, HasOpId {
         type: "Insert";
         content: ProtoNode[];
     }
@@ -421,11 +421,7 @@ export namespace Rebased {
         nested?: (Offset | Prior | ConstrainedTraitSet)[];
     }
 
-    export interface ChangeFrame {
-        moves?: MoveEntry[];
-        priorMoves?: { [key: number]: MoveEntry[]; };
-        marks: TraitMarks;
-    }
+    export type ChangeFrame = Original.ChangeFrame;
 
     export interface TaggedChangeFrame extends ChangeFrame {
         seq?: SeqNumber;
@@ -476,6 +472,10 @@ export namespace Rebased {
 
     export type Mark =
         | ObjMark;
+
+    export function isOffset(mark: Offset | Mark): boolean {
+        return typeof mark === "number";
+    }
 
     export interface HasMods {
         mods?: ModsTrail;
