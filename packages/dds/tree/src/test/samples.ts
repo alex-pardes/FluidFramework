@@ -3,7 +3,7 @@
  * Licensed under the MIT License.
  */
 
-import { Rebased as R, Sibling, Sequenced as S } from "../format";
+import { Sibling, Sequenced as S } from "../format";
 
 export namespace InterleavedInserts {
     /*
@@ -58,6 +58,75 @@ export namespace InterleavedInserts {
                     2,
                     { type: "Insert", op: 3, content: [{ id: "3" }] },
                 ],
+            },
+        }],
+    };
+}
+
+export namespace ChangesInDeepTraits {
+    export const e1: S.Transaction = {
+        ref: 0,
+        seq: 1,
+        frames: [{
+            marks: {
+                foo: [{
+                    type: "Modify",
+                    modify: {
+                        bar: [{
+                            type: "Modify",
+                            modify: {
+                                baz: [{ type: "Insert", op: 0, content: [{ id: "O" }] }],
+                            },
+                        }],
+                    },
+                }],
+            },
+        }],
+    };
+
+    export const e2: S.Transaction = {
+        ref: 0,
+        seq: 2,
+        frames: [{
+            marks: {
+                foo: [{
+                    type: "Modify",
+                    modify: {
+                        bar: [{
+                            type: "Modify",
+                            modify: {
+                                baz: [
+                                    1,
+                                    { type: "Insert", op: 0, content: [{ id: "O" }] },
+                                ],
+                            },
+                        }],
+                    },
+                }],
+            },
+        }],
+    };
+
+    export const e2_r_e1: S.Transaction = {
+        ref: 0,
+        seq: 2,
+        newRef: 1,
+        frames: [{
+            marks: {
+                foo: [{
+                    type: "Modify",
+                    modify: {
+                        bar: [{
+                            type: "Modify",
+                            modify: {
+                                baz: [
+                                    2,
+                                    { type: "Insert", op: 0, content: [{ id: "O" }] },
+                                ],
+                            },
+                        }],
+                    },
+                }],
             },
         }],
     };

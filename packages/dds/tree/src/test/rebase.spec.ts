@@ -10,6 +10,7 @@ import {
 	Rebased as R,
 } from "../format";
 import {
+    ChangesInDeepTraits,
 	InterleavedInserts,
 } from "./samples";
 import { deepFreeze } from "./utils";
@@ -26,6 +27,13 @@ describe(rebase.name, () => {
 			it("e2", () => {
 				const actual = rebase(InterleavedInserts.e2, InterleavedInserts.e1);
 				assert.deepEqual(actual, InterleavedInserts.e2_r_e1);
+			});
+		});
+
+		describe("Changes in deep traits", () => {
+			it("e2", () => {
+				const actual = rebase(ChangesInDeepTraits.e2, ChangesInDeepTraits.e1);
+				assert.deepEqual(actual, ChangesInDeepTraits.e2_r_e1);
 			});
 		});
 	});
