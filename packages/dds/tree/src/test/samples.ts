@@ -173,3 +173,85 @@ export namespace ChangesInDeepTraits {
         }],
     };
 }
+
+export namespace DeleteMergingInsertPositions {
+    export const e1: S.Transaction = {
+        ref: 0,
+        seq: 1,
+        frames: [{
+            marks: {
+                foo: [
+                    2,
+                    { type: "DeleteStart", op: 0 },
+                    3,
+                    { type: "End", op: 0 },
+                ],
+            },
+        }],
+    };
+
+    export const e2: S.Transaction = {
+        ref: 0,
+        seq: 2,
+        frames: [{
+            marks: {
+                foo: [
+                    5,
+                    { type: "Insert", op: 0, content: [{ id: "0" }] },
+                ],
+            },
+        }],
+    };
+
+    export const e3: S.Transaction = {
+        ref: 0,
+        seq: 3,
+        frames: [{
+            marks: {
+                foo: [
+                    { type: "Insert", op: 0, content: [{ id: "0" }], side: Sibling.Next },
+                ],
+            },
+        }],
+    };
+
+    export const e2_r_e1: S.Transaction = {
+        ref: 0,
+        newRef: 1,
+        seq: 2,
+        frames: [{
+            marks: {
+                foo: [
+                    2,
+                    { type: "Insert", op: 0, content: [{ id: "0" }] },
+                ],
+            },
+        }],
+    };
+
+    export const e3_r_e1: S.Transaction = {
+        ref: 0,
+        newRef: 1,
+        seq: 3,
+        frames: [{
+            marks: {
+                foo: [
+                    { type: "Insert", op: 0, content: [{ id: "0" }], side: Sibling.Next },
+                ],
+            },
+        }],
+    };
+
+    export const e3_r_e2: S.Transaction = {
+        ref: 0,
+        newRef: 2,
+        seq: 3,
+        frames: [{
+            marks: {
+                foo: [
+                    { type: "Insert", op: 0, content: [{ id: "0" }], side: Sibling.Next },
+                ],
+            },
+        }],
+    };
+}

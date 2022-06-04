@@ -11,6 +11,7 @@ import {
 } from "../format";
 import {
     ChangesInDeepTraits,
+	DeleteMergingInsertPositions,
 	InterleavedInserts,
     PreviousInsert,
 } from "./samples";
@@ -42,6 +43,13 @@ describe(rebase.name, () => {
 			it("e2", () => {
 				const actual = rebase(ChangesInDeepTraits.e2, ChangesInDeepTraits.e1);
 				assert.deepEqual(actual, ChangesInDeepTraits.e2_r_e1);
+			});
+		});
+
+        describe("Delete merging insert positions", () => {
+			it("e2", () => {
+				const actual = rebase(DeleteMergingInsertPositions.e2, DeleteMergingInsertPositions.e1);
+				assert.deepEqual(actual, DeleteMergingInsertPositions.e2_r_e1);
 			});
 		});
 	});
