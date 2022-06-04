@@ -10,9 +10,10 @@ import {
 	Rebased as R,
 } from "../format";
 import {
-    ChangesInDeepTraits,
 	DeleteMergingInsertPositions,
+    InsertAtSameIndexAsModify,
 	InterleavedInserts,
+    ModifiesAtSamePosition,
     PreviousInsert,
 } from "./samples";
 import { deepFreeze } from "./utils";
@@ -27,30 +28,61 @@ describe(rebase.name, () => {
 	describe("Scenarios", () => {
 		describe("Previous insert", () => {
 			it("e2", () => {
-				const actual = rebase(PreviousInsert.e2, PreviousInsert.e1);
-				assert.deepEqual(actual, PreviousInsert.e2_r_e1);
+                testRebase(
+                    PreviousInsert.e1,
+                    PreviousInsert.e2,
+                    PreviousInsert.e2_r_e1,
+                );
 			});
 		});
 
 		describe("Interleaved inserts", () => {
 			it("e2", () => {
-				const actual = rebase(InterleavedInserts.e2, InterleavedInserts.e1);
-				assert.deepEqual(actual, InterleavedInserts.e2_r_e1);
+                testRebase(
+                    InterleavedInserts.e1,
+                    InterleavedInserts.e2,
+                    InterleavedInserts.e2_r_e1,
+                );
 			});
 		});
 
-		describe("Changes in deep traits", () => {
+		describe("Modifies at same position", () => {
 			it("e2", () => {
-				const actual = rebase(ChangesInDeepTraits.e2, ChangesInDeepTraits.e1);
-				assert.deepEqual(actual, ChangesInDeepTraits.e2_r_e1);
+                testRebase(
+                    ModifiesAtSamePosition.e1,
+                    ModifiesAtSamePosition.e2,
+                    ModifiesAtSamePosition.e2_r_e1,
+                );
+			});
+		});
+
+		describe("Insert at same index as modify", () => {
+			it("e2 over e1", () => {
+                testRebase(
+                    InsertAtSameIndexAsModify.e1,
+                    InsertAtSameIndexAsModify.e2,
+                    InsertAtSameIndexAsModify.e2_r_e1,
+                );
 			});
 		});
 
         describe("Delete merging insert positions", () => {
 			it("e2", () => {
-				const actual = rebase(DeleteMergingInsertPositions.e2, DeleteMergingInsertPositions.e1);
-				assert.deepEqual(actual, DeleteMergingInsertPositions.e2_r_e1);
+                testRebase(
+                    DeleteMergingInsertPositions.e1,
+                    DeleteMergingInsertPositions.e2,
+                    DeleteMergingInsertPositions.e2_r_e1,
+                );
 			});
 		});
 	});
 });
+
+function testRebase(
+    base: S.Transaction,
+    original: R.Transaction,
+    expected: R.Transaction,
+) {
+    const actual = rebase(original, base);
+    assert.deepEqual(actual, expected);
+}

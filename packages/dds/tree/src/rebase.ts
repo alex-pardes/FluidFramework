@@ -117,10 +117,11 @@ function compare(currMark: MarkWithIndex, baseMark: MarkWithIndex): number {
         case Sibling.Prev:
             return -1;
         case Sibling.Next:
-            return 1;
+            // Should come before if baseMark is a modify
+            return baseMark.mark.type === "Modify" ? -1 : 1;
         default:
-            // No side implies this is a modify? Should come after other mark unless it is also a modify.
-            return 0;
+            // Modifies are always the last mark at an index
+            return baseMark.mark.type === "Modify" ? 0 : 1;
     }
 }
 

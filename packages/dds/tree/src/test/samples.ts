@@ -105,7 +105,7 @@ export namespace InterleavedInserts {
     };
 }
 
-export namespace ChangesInDeepTraits {
+export namespace ModifiesAtSamePosition {
     export const e1: S.Transaction = {
         ref: 0,
         seq: 1,
@@ -174,6 +174,54 @@ export namespace ChangesInDeepTraits {
     };
 }
 
+export namespace InsertAtSameIndexAsModify {
+    export const e1: S.Transaction = {
+        ref: 0,
+        seq: 1,
+        frames: [{
+            marks: {
+                foo: [
+                    { type: "Insert", op: 0, content: [{ id: "0" }], side: Sibling.Next },
+                ],
+            },
+        }],
+    };
+
+    export const e2: S.Transaction = {
+        ref: 0,
+        seq: 2,
+        frames: [{
+            marks: {
+                foo: [{
+                    type: "Modify",
+                    modify: {
+                        bar: [{ type: "Insert", op: 0, content: [{ id: "0" }] }],
+                    },
+                }],
+            },
+        }],
+    };
+
+    export const e2_r_e1: S.Transaction = {
+        ref: 0,
+        newRef: 1,
+        seq: 2,
+        frames: [{
+            marks: {
+                foo: [
+                    1,
+                    {
+                        type: "Modify",
+                        modify: {
+                            bar: [{ type: "Insert", op: 0, content: [{ id: "0" }] }],
+                        },
+                    },
+                ],
+            },
+        }],
+    };
+}
+
 export namespace DeleteMergingInsertPositions {
     export const e1: S.Transaction = {
         ref: 0,
@@ -231,6 +279,7 @@ export namespace DeleteMergingInsertPositions {
 
     export const e3_r_e1: S.Transaction = {
         ref: 0,
+
         newRef: 1,
         seq: 3,
         frames: [{
