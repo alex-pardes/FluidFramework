@@ -12,6 +12,7 @@ import {
 import {
 	DeleteMergingInsertPositions,
     InsertAtSameIndexAsModify,
+	InsertBeforeModify,
 	InterleavedInserts,
     ModifiesAtSamePosition,
     PreviousInsert,
@@ -62,6 +63,16 @@ describe(rebase.name, () => {
                     InsertAtSameIndexAsModify.e1,
                     InsertAtSameIndexAsModify.e2,
                     InsertAtSameIndexAsModify.e2_r_e1,
+                );
+			});
+		});
+
+        describe("Insert before modify", () => {
+			it("e2", () => {
+                testRebase(
+                    InsertBeforeModify.e1,
+                    InsertBeforeModify.e2,
+                    InsertBeforeModify.e2_r_e1,
                 );
 			});
 		});

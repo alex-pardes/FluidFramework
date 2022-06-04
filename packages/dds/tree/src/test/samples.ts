@@ -222,6 +222,63 @@ export namespace InsertAtSameIndexAsModify {
     };
 }
 
+export namespace InsertBeforeModify {
+    export const e1: S.Transaction = {
+        ref: 0,
+        seq: 1,
+        frames: [{
+            marks: {
+                foo: [{
+                    type: "Modify",
+                    modify: {
+                        bar: [{ type: "Insert", op: 0, content: [{ id: "0" }] }],
+                    },
+                }],
+            },
+        }],
+    };
+
+    export const e2: S.Transaction = {
+        ref: 0,
+        seq: 2,
+        frames: [{
+            marks: {
+                foo: [
+                    { type: "Insert", op: 0, content: [{ id: "0" }], side: Sibling.Next },
+                    {
+                        type: "Modify",
+                        modify: {
+                            bar: [{ type: "Insert", op: 1, content: [{ id: "0" }], side: Sibling.Next }],
+                        },
+                    },
+                ],
+            },
+        }],
+    };
+
+    export const e2_r_e1: S.Transaction = {
+        ref: 0,
+        newRef: 1,
+        seq: 2,
+        frames: [{
+            marks: {
+                foo: [
+                    { type: "Insert", op: 0, content: [{ id: "0" }], side: Sibling.Next },
+                    {
+                        type: "Modify",
+                        modify: {
+                            bar: [
+                                1,
+                                { type: "Insert", op: 1, content: [{ id: "0" }], side: Sibling.Next },
+                            ],
+                        },
+                    },
+                ],
+            },
+        }],
+    };
+}
+
 export namespace DeleteMergingInsertPositions {
     export const e1: S.Transaction = {
         ref: 0,
