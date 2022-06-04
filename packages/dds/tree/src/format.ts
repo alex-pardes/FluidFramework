@@ -71,9 +71,9 @@ export namespace Original {
         op: OpId;
     }
 
-    export interface ChangeFrame {
+    export interface ChangeFrame<TMark = Mark> {
         moves?: MoveEntry[];
-        marks: NodeMarks;
+        marks: NodeMarks<TMark>;
     }
 
     export interface SetValue {
@@ -83,7 +83,7 @@ export namespace Original {
 
     export interface Modify<TMark = Mark> {
         type?: "Modify";
-        modify: NodeMarks;
+        modify: NodeMarks<TMark>;
     }
 
     export interface NodeMarks<TMark = Mark> {
@@ -98,15 +98,9 @@ export namespace Original {
     export type AttachMark =
         | Insert
         | MoveIn;
-    export type DetachMark =
-        | MoveOut
-        | Delete;
-    export type SegmentMark =
-        | AttachMark
-        | DetachMark;
     export type ObjMark =
         | ModsMark
-        | SegmentMark
+        | AttachMark
         | SliceBound;
 
     export type Mark =
@@ -319,7 +313,7 @@ export namespace Original {
  */
 export namespace Rebased {
     // Use "interface" instead "type" to avoid TSC error
-    export type Modify = Original.Modify<Mark>;
+    export interface Modify<TMark = Mark> extends Original.Modify<TMark> {}
     export type IsSliceStart = Original.IsSliceStart;
     export type MoveOutStart = Original.MoveOutStart;
     export type DeleteStart = Original.DeleteStart;
@@ -388,7 +382,7 @@ export namespace Rebased {
         nested?: (Offset | Prior | ConstrainedTraitSet)[];
     }
 
-    export type ChangeFrame = Original.ChangeFrame;
+    export interface ChangeFrame<TMark = Mark> extends Original.ChangeFrame<TMark> {}
 
     export interface TaggedChangeFrame extends ChangeFrame {
         seq?: SeqNumber;
@@ -404,12 +398,6 @@ export namespace Rebased {
     export type AttachMark =
         | Insert
         | MoveIn;
-    export type DetachMark =
-        | MoveOut
-        | Delete;
-    export type SegmentMark =
-        | AttachMark
-        | DetachMark;
     export type SliceBound =
         | MoveOutStart
         | DeleteStart
@@ -420,7 +408,7 @@ export namespace Rebased {
         | PriorSliceEnd;
     export type ObjMark =
         | ModsMark
-        | SegmentMark
+        | AttachMark
         | SliceBound
         | ReturnSlice
         | ReturnSet
@@ -447,33 +435,13 @@ export namespace Rebased {
         type: "RevertValue";
     }
 
-    export interface Insert extends Place {
+    export interface Insert extends Place, HasOpId {
         type: "Insert";
         content: ProtoNode[];
     }
 
-    export interface MoveInSet extends Place, HasLength, HasOpId {
-        type: "MoveInSet";
-    }
-
-    export interface MoveInSlice extends Place, HasLength, HasOpId {
-        type: "MoveInSlice";
-    }
-
-    export type MoveIn = MoveInSet | MoveInSlice;
-
-    /**
-     * Used for set-like ranges and atomic ranges.
-     */
-    export interface Delete extends HasLength {
-        type: "Delete";
-    }
-
-    /**
-     * Used for set-like ranges and atomic ranges.
-     */
-    export interface MoveOut extends HasOpId, HasLength {
-        type: "MoveOut";
+    export interface MoveIn extends Place, HasLength, HasOpId {
+        type: "MoveIn";
     }
 
     export interface PriorDetach extends HasSeqNumber, HasLength {
@@ -510,7 +478,7 @@ export namespace Rebased {
 }
 
 export namespace Squashed {
-    export type Modify = Original.Modify;
+    export interface Modify<TMark = Mark> extends Original.Modify<TMark> {}
     export type HasSeqNumber = Rebased.HasSeqNumber;
     export type HasSliceId = Rebased.HasOpId;
     export type MoveEntry = Rebased.MoveEntry;

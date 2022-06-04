@@ -104,8 +104,7 @@ function rebaseTraitMarks(
                     sizeChange += baseMark.content.length;
                     break;
 
-                case "MoveInSet":
-                case "MoveInSlice":
+                case "MoveIn":
                     sizeChange += getLength(baseMark);
                     break;
 
@@ -148,17 +147,9 @@ function compare(currMark: MarkWithIndex, baseMark: MarkWithIndex): number {
         return cmp;
     }
 
-    const side = getSide(currMark.mark);
-    switch (side) {
-        case Sibling.Prev:
-            return -1;
-        case Sibling.Next:
-            // Should come before if baseMark is a modify
-            return baseMark.mark.type === "Modify" ? -1 : 1;
-        default:
-            // Modifies are always the last mark at an index
-            return baseMark.mark.type === "Modify" ? 0 : 1;
-    }
+    const baseSide = getSideWithPriority(baseMark.mark, true);
+    const currSide = getSideWithPriority(currMark.mark, false);
+    return currSide - baseSide;
 }
 
 interface TraitMarksIterator {
@@ -220,19 +211,30 @@ function adjustOffsetAndAdvance(iterator: TraitMarksIterator, delta: number) {
     advanceI(iterator, prevOffset);
 }
 
-function getSide(mark: R.Mark): Sibling | undefined {
-    // TODO: Range starts
+function getSideWithPriority(mark: R.Mark, isBase: boolean): number {
     switch (mark.type) {
         case "Insert":
-        case "MoveInSet":
-        case "MoveInSlice":
+        case "MoveIn":
+            if (isBase) {
+                return 0;
+            }
+            return getSide(mark) === Sibling.Prev ? -1 : 1;
+
         case "MoveOutStart":
         case "DeleteStart":
         case "End":
-            return mark.side ?? Sibling.Prev;
+            return getSide(mark) === Sibling.Prev ? -2 : 2;
+
+        case "Modify":
+            return 3;
+
         default:
-            return undefined;
+            assert(false, "All cases should be covered");
     }
+}
+
+function getSide(mark: R.Place | R.IsSliceStart | R.SliceEnd): Sibling {
+    return mark.side ?? Sibling.Prev;
 }
 
 function getLength(mark: HasLength): number {
