@@ -3,12 +3,14 @@
  * Licensed under the MIT License.
  */
 
+import { assert } from "@fluidframework/common-utils";
 import {
 	Sequenced as S,
 	Rebased as R,
     HasLength,
     Index,
     Offset,
+    OpId,
 	SeqNumber,
     Sibling,
 } from "./format";
@@ -70,28 +72,62 @@ function rebaseTraitMarks(
     const currIterator = getIterator(curr);
     const baseIterator = getIterator(base);
     let sizeChange = 0;
+    const activeRangeOps = new Map<OpId, R.Mark>();
+    let rangeStart;
 
     while (isValid(currIterator) && isValid(baseIterator)) {
-        const currMark = getMark(currIterator);
-        const baseMark = getMark(baseIterator);
-        const cmp = compare(currMark, baseMark);
+        const currMarkWithIndex = getMark(currIterator);
+        const baseMarkWithIndex = getMark(baseIterator);
+        const cmp = compare(currMarkWithIndex, baseMarkWithIndex);
+
+        const currMark = currMarkWithIndex.mark;
+        const baseMark = baseMarkWithIndex.mark;
+
         if (cmp === 0) {
-            // This if block should always run.
-            if (currMark.mark.type === "Modify" && baseMark.mark.type === "Modify") {
-                console.log("Descending");
-                rebaseNodeMarks(currMark.mark.modify, baseMark.mark.modify);
-                console.log("Ascending");
-            }
+            assert(
+                currMark.type === "Modify" && baseMark.type === "Modify",
+                "Only modifies should be at identical positions",
+            );
+            rebaseNodeMarks(currMark.modify, baseMark.modify);
         }
         if (cmp <= 0) {
-            console.log(`Advancing over curr ${currMark.mark.type}`);
+            if (rangeStart !== undefined) {
+                sizeChange -= currMarkWithIndex.index - rangeStart;
+                rangeStart = currMarkWithIndex.index;
+            }
             adjustOffsetAndAdvance(currIterator, sizeChange);
             sizeChange = 0;
-            advance(currIterator);
         }
         if (cmp >= 0) {
-            console.log(`Advancing over base ${baseMark.mark.type}`);
-            sizeChange += getSizeChange(baseMark.mark);
+            switch (baseMark.type) {
+                case "Insert":
+                    sizeChange += baseMark.content.length;
+                    break;
+
+                case "MoveInSet":
+                case "MoveInSlice":
+                    sizeChange += getLength(baseMark);
+                    break;
+
+                case "DeleteStart":
+                    activeRangeOps.set(baseMark.op, baseMark);
+                    if (rangeStart === undefined) {
+                        rangeStart = baseMarkWithIndex.index;
+                    }
+                    break;
+
+                case "End":
+                    activeRangeOps.delete(baseMark.op);
+                    if (activeRangeOps.size === 0) {
+                        assert(rangeStart !== undefined, "Range start should be set when encountering a range end");
+                        sizeChange -= baseMarkWithIndex.index - rangeStart;
+                        rangeStart = undefined;
+                    }
+                    break;
+
+                default: {}
+            }
+
             advance(baseIterator);
         }
     }
@@ -167,9 +203,6 @@ function advanceI(iterator: TraitMarksIterator, offset: Offset) {
 }
 
 function adjustOffsetAndAdvance(iterator: TraitMarksIterator, delta: number) {
-    if (delta === 0) {
-        return;
-    }
     let prevOffset = 0;
     if (hasOffset(iterator)) {
         prevOffset = iterator.marks[iterator.markIndex] as number;
@@ -179,28 +212,12 @@ function adjustOffsetAndAdvance(iterator: TraitMarksIterator, delta: number) {
         } else {
             iterator.marks[iterator.markIndex] = newOffset;
         }
-    } else {
-        // Delta should be positive here
+    } else if (delta !== 0) {
+        assert(delta > 0, "Negative distance between marks");
         iterator.marks.splice(iterator.markIndex, 0, delta);
     }
 
     advanceI(iterator, prevOffset);
-}
-
-function getSizeChange(mark: R.Mark): number {
-    // TODO: Handle return and revive
-    switch (mark.type) {
-        case "Insert":
-            return mark.content.length;
-        case "MoveInSet":
-        case "MoveInSlice":
-            return getLength(mark);
-        case "Delete":
-        case "MoveOut":
-            return -getLength(mark);
-        default:
-            return 0;
-    }
 }
 
 function getSide(mark: R.Mark): Sibling | undefined {

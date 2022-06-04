@@ -85,6 +85,22 @@ describe(rebase.name, () => {
                     DeleteMergingInsertPositions.e2_r_e1,
                 );
 			});
+
+			it("e3", () => {
+                testRebase(
+                    DeleteMergingInsertPositions.e1,
+                    DeleteMergingInsertPositions.e3,
+                    DeleteMergingInsertPositions.e3_r_e1,
+                );
+			});
+
+			it("e4", () => {
+                testRebase(
+                    DeleteMergingInsertPositions.e1,
+                    DeleteMergingInsertPositions.e4,
+                    DeleteMergingInsertPositions.e4_r_e1,
+                );
+			});
 		});
 	});
 });
