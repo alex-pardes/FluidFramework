@@ -120,7 +120,7 @@ export namespace Original {
         side?: Sibling;
 
         // TODO: This should be in Rebased instead of Original
-        lineage?: LineageNode[];
+        lineage?: Lineage;
     }
 
     export interface Attach extends Place {
@@ -501,8 +501,11 @@ export enum Sibling {
     Next,
 }
 
+export type Lineage = LineageNode[];
+
 export interface LineageNode {
-    id: OpId;
+    seq: SeqNumber;
+    op: OpId;
     offset: Offset;
 }
 

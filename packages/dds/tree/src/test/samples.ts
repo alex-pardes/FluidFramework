@@ -342,7 +342,12 @@ export namespace DeleteMergingInsertPositions {
             marks: {
                 foo: [
                     2,
-                    { type: "Insert", op: 0, content: [{ id: "0" }] },
+                    {
+                        type: "Insert",
+                        op: 0,
+                        content: [{ id: "0" }],
+                        lineage: [{ seq: 1, op: 0, offset: Infinity }],
+                    },
                 ],
             },
         }],
@@ -356,7 +361,13 @@ export namespace DeleteMergingInsertPositions {
             marks: {
                 foo: [
                     2,
-                    { type: "Insert", op: 0, content: [{ id: "0" }], side: Sibling.Next },
+                    {
+                        type: "Insert",
+                        op: 0,
+                        content: [{ id: "0" }],
+                        side: Sibling.Next,
+                        lineage: [{ seq: 1, op: 0, offset: 0 }],
+                    },
                 ],
             },
         }],
@@ -370,7 +381,13 @@ export namespace DeleteMergingInsertPositions {
             marks: {
                 foo: [
                     2,
-                    { type: "Insert", op: 0, content: [{ id: "0" }], side: Sibling.Next },
+                    {
+                        type: "Insert",
+                        op: 0,
+                        content: [{ id: "0" }],
+                        side: Sibling.Next,
+                        lineage: [{ seq: 1, op: 0, offset: 0 }],
+                    },
                 ],
             },
         }],
@@ -384,7 +401,12 @@ export namespace DeleteMergingInsertPositions {
             marks: {
                 foo: [
                     2,
-                    { type: "Insert", op: 0, content: [{ id: "0" }] },
+                    {
+                        type: "Insert",
+                        op: 0,
+                        content: [{ id: "0" }],
+                        lineage: [{ seq: 1, op: 0, offset: 2 }],
+                    },
                 ],
             },
         }],
@@ -392,13 +414,18 @@ export namespace DeleteMergingInsertPositions {
 
     export const e4_r_e2: S.Transaction = {
         ref: 0,
-        newRef: 1,
+        newRef: 2,
         seq: 4,
         frames: [{
             marks: {
                 foo: [
                     2,
-                    { type: "Insert", op: 0, content: [{ id: "0" }] },
+                    {
+                        type: "Insert",
+                        op: 0,
+                        content: [{ id: "0" }],
+                        lineage: [{ seq: 1, op: 0, offset: 2 }],
+                    },
                 ],
             },
         }],
@@ -406,13 +433,18 @@ export namespace DeleteMergingInsertPositions {
 
     export const e4_r_e3: S.Transaction = {
         ref: 0,
-        newRef: 1,
+        newRef: 3,
         seq: 4,
         frames: [{
             marks: {
                 foo: [
                     3,
-                    { type: "Insert", op: 0, content: [{ id: "0" }] },
+                    {
+                        type: "Insert",
+                        op: 0,
+                        content: [{ id: "0" }],
+                        lineage: [{ seq: 1, op: 0, offset: 2 }],
+                    },
                 ],
             },
         }],

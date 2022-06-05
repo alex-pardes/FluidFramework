@@ -9,6 +9,7 @@ import {
 	Rebased as R,
     HasLength,
     Index,
+    Lineage,
     Offset,
     OpId,
 	SeqNumber,
@@ -53,32 +54,37 @@ function rebaseOverFrame(
 	base: R.ChangeFrame,
 	baseSeq: SeqNumber,
 ): void {
-    rebaseNodeMarks(orig.marks, base.marks);
+    rebaseNodeMarks(orig.marks, base.marks, baseSeq);
 }
 
 function rebaseNodeMarks(
     orig: R.NodeMarks,
     base: R.NodeMarks,
+    baseSeq: SeqNumber,
 ): void {
     for (const trait of Object.keys(orig)) {
-        rebaseTraitMarks(orig[trait], base[trait] ?? []);
+        rebaseTraitMarks(orig[trait], base[trait] ?? [], baseSeq);
     }
 }
 
 function rebaseTraitMarks(
 	curr: R.TraitMarks,
 	base: R.TraitMarks,
+    baseSeq: SeqNumber,
 ): void {
     const currIterator = getIterator(curr);
     const baseIterator = getIterator(base);
     let sizeChange = 0;
-    const activeRangeOps = new Map<OpId, R.Mark>();
+
+    // TODO: Consider multiple active ranges
+    let activeRangeOp: R.Mark | undefined;
     let rangeStart;
+    let prevBaseMarkWithIndex;
 
     while (isValid(currIterator) && isValid(baseIterator)) {
         const currMarkWithIndex = getMark(currIterator);
         const baseMarkWithIndex = getMark(baseIterator);
-        const cmp = compare(currMarkWithIndex, baseMarkWithIndex);
+        const cmp = compareMarkPositions(currMarkWithIndex, baseMarkWithIndex);
 
         const currMark = currMarkWithIndex.mark;
         const baseMark = baseMarkWithIndex.mark;
@@ -88,12 +94,21 @@ function rebaseTraitMarks(
                 currMark.type === "Modify" && baseMark.type === "Modify",
                 "Only modifies should be at identical positions",
             );
-            rebaseNodeMarks(currMark.modify, baseMark.modify);
+            rebaseNodeMarks(currMark.modify, baseMark.modify, baseSeq);
         }
         if (cmp <= 0) {
             if (rangeStart !== undefined) {
-                sizeChange -= currMarkWithIndex.index - rangeStart;
+                const offsetIntoRange = currMarkWithIndex.index - rangeStart;
+                sizeChange -= offsetIntoRange;
                 rangeStart = currMarkWithIndex.index;
+                addToLineage(currMark, baseSeq, (activeRangeOp as R.Place).op, offsetIntoRange);
+            } else if (
+                prevBaseMarkWithIndex?.index === currMarkWithIndex.index &&
+                prevBaseMarkWithIndex.mark?.type === "End"
+            ) {
+                addToLineage(currMark, baseSeq, prevBaseMarkWithIndex.mark.op, Infinity);
+            } else if (baseMarkWithIndex.index === currMarkWithIndex.index && baseMark.type === "End") {
+                addToLineage(currMark, baseSeq, baseMark.op, 0);
             }
             adjustOffsetAndAdvance(currIterator, sizeChange);
             sizeChange = 0;
@@ -109,29 +124,34 @@ function rebaseTraitMarks(
                     break;
 
                 case "DeleteStart":
-                    activeRangeOps.set(baseMark.op, baseMark);
+                    activeRangeOp = baseMark;
                     if (rangeStart === undefined) {
                         rangeStart = baseMarkWithIndex.index;
                     }
                     break;
 
                 case "End":
-                    activeRangeOps.delete(baseMark.op);
-                    if (activeRangeOps.size === 0) {
-                        assert(rangeStart !== undefined, "Range start should be set when encountering a range end");
-                        sizeChange -= baseMarkWithIndex.index - rangeStart;
-                        rangeStart = undefined;
-                    }
+                    assert(rangeStart !== undefined, "Range start should be set when encountering a range end");
+                    sizeChange -= baseMarkWithIndex.index - rangeStart;
+                    activeRangeOp = undefined;
+                    rangeStart = undefined;
                     break;
 
-                default: {}
+                default:
+                    break;
             }
 
+            prevBaseMarkWithIndex = baseMarkWithIndex;
             advance(baseIterator);
         }
     }
 
     if (isValid(currIterator)) {
+        // TODO: Deduplicate this logic
+        const currMarkWithIndex = getMark(currIterator);
+        if (prevBaseMarkWithIndex?.index === currMarkWithIndex.index && prevBaseMarkWithIndex.mark?.type === "End") {
+            addToLineage(currMarkWithIndex.mark, baseSeq, prevBaseMarkWithIndex.mark.op, Infinity);
+        }
         adjustOffsetAndAdvance(currIterator, sizeChange);
     }
 }
@@ -141,15 +161,72 @@ interface MarkWithIndex {
     index: Index;
 }
 
-function compare(currMark: MarkWithIndex, baseMark: MarkWithIndex): number {
-    const cmp = currMark.index - baseMark.index;
-    if (cmp !== 0) {
-        return cmp;
+function compareMarkPositions(currMark: MarkWithIndex, baseMark: MarkWithIndex): number {
+    const cmpIndex = currMark.index - baseMark.index;
+    if (cmpIndex !== 0) {
+        return cmpIndex;
+    }
+
+    const cmpLineage = compareLineagePositions(getLineage(currMark.mark), getLineage(baseMark.mark));
+    if (cmpLineage !== 0) {
+        return cmpLineage;
     }
 
     const baseSide = getSideWithPriority(baseMark.mark, true);
     const currSide = getSideWithPriority(currMark.mark, false);
     return currSide - baseSide;
+}
+
+function compareLineagePositions(lineageA: Lineage, lineageB: Lineage): number {
+    const commonAncestorIndices = getCommonAncestorIndices(lineageA, lineageB);
+    if (commonAncestorIndices === undefined) {
+        return 0;
+    }
+
+    let [indexA, indexB] = commonAncestorIndices;
+    while (indexA >= 0 && indexB >= 0) {
+        const nodeA = lineageA[indexA];
+        const nodeB = lineageB[indexB];
+        assert(
+            nodeA.seq === nodeB.seq && nodeA.op === nodeB.op,
+            "Ancestry should be the same when starting from common ancestor"
+        );
+
+        const cmp = nodeA.offset - nodeB.offset;
+        if (cmp !== 0) {
+            return cmp;
+        }
+
+        indexA--;
+        indexB--;
+    }
+
+    return 0;
+}
+
+function getCommonAncestorIndices(lineageA: Lineage, lineageB: Lineage): [number, number] | undefined {
+    for (let indexA = lineageA.length - 1; indexA >= 0; indexA--) {
+        const seq = lineageA[indexA].seq;
+        const op = lineageA[indexA].op;
+        const indexB = lineageB.findIndex((nodeB) => nodeB.seq === seq && nodeB.op === op);
+        if (indexB >= 0) {
+            return [indexA, indexB];
+        }
+    }
+    return undefined;
+}
+
+function getLineage(mark: R.Mark): Lineage {
+    switch (mark.type) {
+        case "Insert":
+        case "MoveIn":
+        case "MoveOutStart":
+        case "DeleteStart":
+        case "End":
+            return mark.lineage ?? [];
+        default:
+            return [];
+    }
 }
 
 interface TraitMarksIterator {
@@ -239,4 +316,20 @@ function getSide(mark: R.Place): Sibling {
 
 function getLength(mark: HasLength): number {
     return mark.length ?? 1;
+}
+
+function addToLineage(mark: R.Mark, seq: SeqNumber, op: OpId, offset: Offset) {
+    switch (mark.type) {
+        case "Insert":
+        case "MoveIn":
+        case "MoveOutStart":
+        case "DeleteStart":
+        case "End":
+            if (mark.lineage === undefined) {
+                mark.lineage = [];
+            }
+            mark.lineage.push({ seq, op, offset });
+        default:
+            break;
+    }
 }
