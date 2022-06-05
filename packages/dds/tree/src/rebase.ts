@@ -233,7 +233,7 @@ function getSideWithPriority(mark: R.Mark, isBase: boolean): number {
     }
 }
 
-function getSide(mark: R.Place | R.IsSliceStart | R.SliceEnd): Sibling {
+function getSide(mark: R.Place): Sibling {
     return mark.side ?? Sibling.Prev;
 }
 

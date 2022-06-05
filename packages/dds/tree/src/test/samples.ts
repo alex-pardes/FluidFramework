@@ -389,4 +389,32 @@ export namespace DeleteMergingInsertPositions {
             },
         }],
     };
+
+    export const e4_r_e2: S.Transaction = {
+        ref: 0,
+        newRef: 1,
+        seq: 4,
+        frames: [{
+            marks: {
+                foo: [
+                    2,
+                    { type: "Insert", op: 0, content: [{ id: "0" }] },
+                ],
+            },
+        }],
+    };
+
+    export const e4_r_e3: S.Transaction = {
+        ref: 0,
+        newRef: 1,
+        seq: 4,
+        frames: [{
+            marks: {
+                foo: [
+                    3,
+                    { type: "Insert", op: 0, content: [{ id: "0" }] },
+                ],
+            },
+        }],
+    };
 }

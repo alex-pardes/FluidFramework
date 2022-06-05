@@ -58,7 +58,7 @@ describe(rebase.name, () => {
 		});
 
 		describe("Insert at same index as modify", () => {
-			it("e2 over e1", () => {
+			it("e2", () => {
                 testRebase(
                     InsertAtSameIndexAsModify.e1,
                     InsertAtSameIndexAsModify.e2,
@@ -86,7 +86,7 @@ describe(rebase.name, () => {
                 );
 			});
 
-			it("e3", () => {
+			it("e3 over e1", () => {
                 testRebase(
                     DeleteMergingInsertPositions.e1,
                     DeleteMergingInsertPositions.e3,
@@ -94,11 +94,36 @@ describe(rebase.name, () => {
                 );
 			});
 
-			it("e4", () => {
+			it("e3 over e2", () => {
+                testRebase(
+                    DeleteMergingInsertPositions.e2_r_e1,
+                    DeleteMergingInsertPositions.e3_r_e1,
+                    DeleteMergingInsertPositions.e3_r_e2,
+                );
+			});
+
+			it("e4 over e1", () => {
                 testRebase(
                     DeleteMergingInsertPositions.e1,
                     DeleteMergingInsertPositions.e4,
                     DeleteMergingInsertPositions.e4_r_e1,
+                );
+			});
+
+
+			it("e4 over e2", () => {
+                testRebase(
+                    DeleteMergingInsertPositions.e2_r_e1,
+                    DeleteMergingInsertPositions.e4_r_e1,
+                    DeleteMergingInsertPositions.e4_r_e2,
+                );
+			});
+
+			it("e4 over e3", () => {
+                testRebase(
+                    DeleteMergingInsertPositions.e3_r_e2,
+                    DeleteMergingInsertPositions.e4_r_e2,
+                    DeleteMergingInsertPositions.e4_r_e3,
                 );
 			});
 		});

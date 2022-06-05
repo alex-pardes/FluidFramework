@@ -106,7 +106,7 @@ export namespace Original {
     export type Mark =
         | ObjMark;
 
-    export interface Place {
+    export interface Place extends HasOpId {
         /**
          * Whether the attach operation was performed relative to the previous sibling or the next.
          * If no sibling exists on the indicated side then the insert was relative to the trait extremity.
@@ -118,50 +118,27 @@ export namespace Original {
          * Omit if `Sibling.Prev` for terseness.
          */
         side?: Sibling;
-        /**
-         * Omit if not in peer change.
-         * Omit if `Tiebreak.LastToFirst` for terseness.
-         */
-        tiebreak?: Tiebreak;
+
+        // TODO: This should be in Rebased instead of Original
+        lineage?: LineageNode[];
+    }
+
+    export interface Attach extends Place {
         /**
          * Omit if not in peer change.
          * Omit if performed with a parent-based place anchor.
          * Omit if `Commutativity.Full`.
          */
-        commute?: Commutativity;
-        /**
-         * Omit if no drill-down.
-         */
-        drill?: DrillDepth;
+         commute?: Commutativity;
     }
 
-    export interface Insert extends Place, HasOpId {
+    export interface Insert extends Attach {
         type: "Insert";
         content: ProtoNode[];
     }
 
-    export interface MoveInSet extends Place, HasOpId {
-        type: "MoveInSet";
-    }
-
-    export interface MoveInSlice extends Place, HasLength, HasOpId {
-        type: "MoveInSlice";
-    }
-
-    export type MoveIn = MoveInSet | MoveInSlice;
-
-    /**
-     * Used for set-like ranges and atomic ranges.
-     */
-    export interface Delete extends HasLength {
-        type: "Delete";
-    }
-
-    /**
-     * Used for set-like ranges and atomic ranges.
-     */
-    export interface MoveOut extends HasLength, HasOpId {
-        type: "MoveOut";
+    export interface MoveIn extends Attach {
+        type: "MoveIn";
     }
 
     /**
@@ -227,44 +204,20 @@ export namespace Original {
      * In addition to the above, any segment that keeps track of mods to its nodes also has its mods purged as
      * described for the Modify mark above.
      */
-    export interface IsSliceStart extends HasOpId {
-        /**
-         * Omit if `Sibling.Prev` for terseness.
-         */
-        side?: Sibling;
-        /**
-         * Omit if not in peer change.
-         * Omit if `Tiebreak.LastToFirst` for terseness.
-         */
-        tiebreak?: Tiebreak;
-        /**
-         * Omit if no drill-down.
-         */
-        drill?: DrillDepth;
-    }
 
-    export interface MoveOutStart extends IsSliceStart {
+    export interface MoveOutStart extends Place {
         type: "MoveOutStart";
     }
 
-    export interface DeleteStart extends IsSliceStart {
+    export interface DeleteStart extends Place {
         type: "DeleteStart";
     }
 
-    export interface SliceEnd extends HasOpId {
+    export interface RangeEnd extends Place {
         type: "End";
-        /**
-         * Omit if `Sibling.Prev` for terseness.
-         */
-        side?: Sibling;
-        /**
-         * Omit if not in peer change.
-         * Omit if `Tiebreak.LastToFirst` for terseness.
-         */
-        tiebreak?: Tiebreak.FirstToLast;
     }
 
-    export type SliceBound = MoveOutStart | DeleteStart | SliceEnd;
+    export type SliceBound = MoveOutStart | DeleteStart | RangeEnd;
 
     /**
      * The contents of a node to be created
@@ -314,10 +267,9 @@ export namespace Original {
 export namespace Rebased {
     // Use "interface" instead "type" to avoid TSC error
     export interface Modify<TMark = Mark> extends Original.Modify<TMark> {}
-    export type IsSliceStart = Original.IsSliceStart;
     export type MoveOutStart = Original.MoveOutStart;
     export type DeleteStart = Original.DeleteStart;
-    export type SliceEnd = Original.SliceEnd;
+    export type SliceEnd = Original.RangeEnd;
     export type SetValue = Original.SetValue;
     export type MoveEntry = Original.MoveEntry;
     export type ProtoNode = Original.ProtoNode;
@@ -549,6 +501,11 @@ export enum Sibling {
     Next,
 }
 
+export interface LineageNode {
+    id: OpId;
+    offset: Offset;
+}
+
 export type Offset = number;
 export type Index = number;
 export type SeqNumber = number;
@@ -557,5 +514,4 @@ export type NodeId = string;
 export type OpId = number;
 export type ClientId = number;
 export type TraitLabel = string;
-export enum Tiebreak { LastToFirst, FirstToLast }
 export enum Commutativity { Full, MoveOnly, DeleteOnly, None }
