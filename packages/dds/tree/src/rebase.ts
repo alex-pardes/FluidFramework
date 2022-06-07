@@ -49,21 +49,33 @@ function rebaseChangeFrame(
 	return newFrame;
 }
 
+type MoveTracker = undefined;
+
 function rebaseOverFrame(
 	orig: R.ChangeFrame,
 	base: R.ChangeFrame,
 	baseSeq: SeqNumber,
 ): void {
-    rebaseNodeMarks(orig.marks, base.marks, baseSeq);
+    const moveTracker = undefined;
+    rebaseNodeMarks(orig.marks, base.marks, baseSeq, moveTracker);
+    handleMoveIns(orig.marks, base.marks, moveTracker);
+}
+
+function handleMoveIns(
+    orig: R.NodeMarks,
+    base: R.NodeMarks,
+    moveTracker: MoveTracker,
+): void {
 }
 
 function rebaseNodeMarks(
     orig: R.NodeMarks,
     base: R.NodeMarks,
     baseSeq: SeqNumber,
+    moveTracker: MoveTracker,
 ): void {
     for (const trait of Object.keys(orig)) {
-        rebaseTraitMarks(orig[trait], base[trait] ?? [], baseSeq);
+        rebaseTraitMarks(orig[trait], base[trait] ?? [], baseSeq, moveTracker);
     }
 }
 
@@ -71,6 +83,7 @@ function rebaseTraitMarks(
 	curr: R.TraitMarks,
 	base: R.TraitMarks,
     baseSeq: SeqNumber,
+    moveTracker: MoveTracker,
 ): void {
     const currIterator = getIterator(curr);
     const baseIterator = getIterator(base);
@@ -94,7 +107,7 @@ function rebaseTraitMarks(
                 currMark.type === "Modify" && baseMark.type === "Modify",
                 "Only modifies should be at identical positions",
             );
-            rebaseNodeMarks(currMark.modify, baseMark.modify, baseSeq);
+            rebaseNodeMarks(currMark.modify, baseMark.modify, baseSeq, moveTracker);
         }
         if (cmp <= 0) {
             if (rangeStart !== undefined) {
@@ -189,7 +202,7 @@ function compareLineagePositions(lineageA: Lineage, lineageB: Lineage): number {
         const nodeB = lineageB[indexB];
         assert(
             nodeA.seq === nodeB.seq && nodeA.op === nodeB.op,
-            "Ancestry should be the same when starting from common ancestor"
+            "Ancestry should be the same when starting from common ancestor",
         );
 
         const cmp = nodeA.offset - nodeB.offset;
@@ -260,17 +273,17 @@ function getNextOffset(iterator: TraitMarksIterator): Offset {
     return hasOffset(iterator) ? iterator.marks[iterator.markIndex] as Offset : 0;
 }
 
-function advance(iterator: TraitMarksIterator) {
+function advance(iterator: TraitMarksIterator): void {
     advanceI(iterator, getNextOffset(iterator));
 }
 
-function advanceI(iterator: TraitMarksIterator, offset: Offset) {
+function advanceI(iterator: TraitMarksIterator, offset: Offset): void {
     iterator.traitIndex += offset;
     const markLength = hasOffset(iterator) ? 2 : 1;
     iterator.markIndex += markLength;
 }
 
-function adjustOffsetAndAdvance(iterator: TraitMarksIterator, delta: number) {
+function adjustOffsetAndAdvance(iterator: TraitMarksIterator, delta: number): void {
     let prevOffset = 0;
     if (hasOffset(iterator)) {
         prevOffset = iterator.marks[iterator.markIndex] as number;
@@ -318,7 +331,7 @@ function getLength(mark: HasLength): number {
     return mark.length ?? 1;
 }
 
-function addToLineage(mark: R.Mark, seq: SeqNumber, op: OpId, offset: Offset) {
+function addToLineage(mark: R.Mark, seq: SeqNumber, op: OpId, offset: Offset): void {
     switch (mark.type) {
         case "Insert":
         case "MoveIn":
