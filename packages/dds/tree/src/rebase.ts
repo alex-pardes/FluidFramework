@@ -49,22 +49,24 @@ function rebaseChangeFrame(
 	return newFrame;
 }
 
-type MoveTracker = undefined;
+interface RebaseState {
+    numMarks: number;
+}
 
 function rebaseOverFrame(
 	orig: R.ChangeFrame,
 	base: R.ChangeFrame,
 	baseSeq: SeqNumber,
 ): void {
-    const moveTracker = undefined;
-    rebaseNodeMarks(orig.marks, base.marks, baseSeq, moveTracker);
-    handleMoveIns(orig.marks, base.marks, moveTracker);
+    const state = { numMarks: countNodeOps(orig.marks) };
+    rebaseNodeMarks(orig.marks, base.marks, baseSeq, state);
+    handleMoveIns(orig.marks, base.marks, state);
 }
 
 function handleMoveIns(
     orig: R.NodeMarks,
     base: R.NodeMarks,
-    moveTracker: MoveTracker,
+    state: RebaseState,
 ): void {
 }
 
@@ -72,10 +74,10 @@ function rebaseNodeMarks(
     orig: R.NodeMarks,
     base: R.NodeMarks,
     baseSeq: SeqNumber,
-    moveTracker: MoveTracker,
+    state: RebaseState,
 ): void {
     for (const trait of Object.keys(orig)) {
-        rebaseTraitMarks(orig[trait], base[trait] ?? [], baseSeq, moveTracker);
+        rebaseTraitMarks(orig[trait], base[trait] ?? [], baseSeq, state);
     }
 }
 
@@ -83,16 +85,18 @@ function rebaseTraitMarks(
 	curr: R.TraitMarks,
 	base: R.TraitMarks,
     baseSeq: SeqNumber,
-    moveTracker: MoveTracker,
+    state: RebaseState,
 ): void {
     const currIterator = getIterator(curr);
     const baseIterator = getIterator(base);
     let sizeChange = 0;
 
     // TODO: Consider multiple active ranges
-    let activeRangeOp: R.Mark | undefined;
-    let rangeStart;
+    let activeBaseRangeOp: R.RangeStart | undefined;
+    let baseRangeStart;
     let prevBaseMarkWithIndex;
+    let activeCurrRangeOp: R.RangeStart | undefined;
+    let currRangeStart;
 
     while (isValid(currIterator) && isValid(baseIterator)) {
         const currMarkWithIndex = getMark(currIterator);
@@ -107,14 +111,15 @@ function rebaseTraitMarks(
                 currMark.type === "Modify" && baseMark.type === "Modify",
                 "Only modifies should be at identical positions",
             );
-            rebaseNodeMarks(currMark.modify, baseMark.modify, baseSeq, moveTracker);
+            rebaseNodeMarks(currMark.modify, baseMark.modify, baseSeq, state);
         }
         if (cmp <= 0) {
-            if (rangeStart !== undefined) {
-                const offsetIntoRange = currMarkWithIndex.index - rangeStart;
+            if (baseRangeStart !== undefined) {
+                // TODO: Check if this change should be marked inactive
+                const offsetIntoRange = currMarkWithIndex.index - baseRangeStart;
                 sizeChange -= offsetIntoRange;
-                rangeStart = currMarkWithIndex.index;
-                addToLineage(currMark, baseSeq, (activeRangeOp as R.Place).op, offsetIntoRange);
+                baseRangeStart = currMarkWithIndex.index;
+                addToLineage(currMark, baseSeq, (activeBaseRangeOp as R.Place).op, offsetIntoRange);
             } else if (
                 prevBaseMarkWithIndex?.index === currMarkWithIndex.index &&
                 prevBaseMarkWithIndex.mark?.type === "End"
@@ -123,31 +128,57 @@ function rebaseTraitMarks(
             } else if (baseMarkWithIndex.index === currMarkWithIndex.index && baseMark.type === "End") {
                 addToLineage(currMark, baseSeq, baseMark.op, 0);
             }
+            switch (currMark.type) {
+                case "DeleteStart":
+                case "MoveOutStart":
+                    activeCurrRangeOp = currMark;
+                    currRangeStart = currMarkWithIndex.index;
+                    break;
+                case "End":
+                    activeCurrRangeOp = undefined;
+                    currRangeStart = undefined;
+                default:
+                    break;
+            }
             adjustOffsetAndAdvance(currIterator, sizeChange);
             sizeChange = 0;
         }
         if (cmp >= 0) {
             switch (baseMark.type) {
                 case "Insert":
-                    sizeChange += baseMark.content.length;
-                    break;
+                case "MoveIn": {
+                    const size = getSize(baseMark);
+                    if (activeCurrRangeOp !== undefined) {
+                        // TODO: Compute this correctly
+                        const isRemovedByRange = false;
+                        if (isRemovedByRange) {
+                            break;
+                        }
 
-                case "MoveIn":
-                    sizeChange += getLength(baseMark);
+                        assert(currRangeStart !== undefined, "Range start should be set if there is an active range");
+                        const offset = baseMarkWithIndex.index - currRangeStart;
+                        splitRange(currIterator, activeCurrRangeOp, offset + sizeChange, size, state.numMarks);
+                        state.numMarks++;
+                        activeCurrRangeOp = undefined;
+                        currRangeStart = undefined;
+                        sizeChange = 0;
+                    } else {
+                        sizeChange += size;
+                    }
                     break;
-
+                }
                 case "DeleteStart":
-                    activeRangeOp = baseMark;
-                    if (rangeStart === undefined) {
-                        rangeStart = baseMarkWithIndex.index;
+                    activeBaseRangeOp = baseMark;
+                    if (baseRangeStart === undefined) {
+                        baseRangeStart = baseMarkWithIndex.index;
                     }
                     break;
 
                 case "End":
-                    assert(rangeStart !== undefined, "Range start should be set when encountering a range end");
-                    sizeChange -= baseMarkWithIndex.index - rangeStart;
-                    activeRangeOp = undefined;
-                    rangeStart = undefined;
+                    assert(baseRangeStart !== undefined, "Range start should be set when encountering a range end");
+                    sizeChange -= baseMarkWithIndex.index - baseRangeStart;
+                    activeBaseRangeOp = undefined;
+                    baseRangeStart = undefined;
                     break;
 
                 default:
@@ -167,6 +198,58 @@ function rebaseTraitMarks(
         }
         adjustOffsetAndAdvance(currIterator, sizeChange);
     }
+}
+
+function countNodeOps(marks: R.NodeMarks): number {
+    return Object.values(marks).reduce(
+        (sum, trait) => sum + countTraitOps(trait),
+        0,
+    );
+}
+
+function countTraitOps(marks: R.TraitMarks): number {
+    return marks.reduce(
+        (sum: number, mark) => sum + countOps(mark),
+        0,
+    );
+}
+
+function countOps(mark: R.Mark | Offset): number {
+    if (R.isOffset(mark)) {
+        return 0;
+    }
+
+    switch ((mark as R.Mark).type) {
+        case "Modify":
+            return countNodeOps((mark as R.Modify).modify);
+        case "End":
+            return 0;
+        default:
+            return 1;
+    }
+}
+
+// TODO: This implementation probably doesn't work correctly for ops nested in the rage.
+function splitRange(
+    iterator: TraitMarksIterator,
+    startOp: R.RangeStart,
+    firstSegmentLength: number,
+    skippedLength: number,
+    newOpId: OpId,
+) {
+    const endMark: R.RangeEnd = { type: "End", op: newOpId };
+    const startMark = { ...startOp };
+    const isSlice = false;
+    if (isSlice) {
+        endMark.side = Sibling.Next;
+        startMark.side = Sibling.Prev;
+    }
+
+    adjustOffset(iterator, -firstSegmentLength);
+    insertMark(iterator, firstSegmentLength, endMark);
+    advance(iterator);
+    insertMark(iterator, skippedLength, startMark);
+    startOp.op = newOpId;
 }
 
 interface MarkWithIndex {
@@ -283,7 +366,8 @@ function advanceI(iterator: TraitMarksIterator, offset: Offset): void {
     iterator.markIndex += markLength;
 }
 
-function adjustOffsetAndAdvance(iterator: TraitMarksIterator, delta: number): void {
+// Returns the offset before the adjustment
+function adjustOffset(iterator: TraitMarksIterator, delta: number): number {
     let prevOffset = 0;
     if (hasOffset(iterator)) {
         prevOffset = iterator.marks[iterator.markIndex] as number;
@@ -298,7 +382,16 @@ function adjustOffsetAndAdvance(iterator: TraitMarksIterator, delta: number): vo
         iterator.marks.splice(iterator.markIndex, 0, delta);
     }
 
+    return prevOffset;
+}
+
+function adjustOffsetAndAdvance(iterator: TraitMarksIterator, delta: number): void {
+    const prevOffset = adjustOffset(iterator, delta);
     advanceI(iterator, prevOffset);
+}
+
+function insertMark(iterator: TraitMarksIterator, offset: Offset, mark: R.Mark) {
+    iterator.marks.splice(iterator.markIndex, 0, offset, mark);
 }
 
 function getSideWithPriority(mark: R.Mark, isBase: boolean): number {
@@ -325,6 +418,14 @@ function getSideWithPriority(mark: R.Mark, isBase: boolean): number {
 
 function getSide(mark: R.Place): Sibling {
     return mark.side ?? Sibling.Prev;
+}
+
+function getSize(mark: R.AttachMark): number {
+    if (mark.type === "Insert") {
+        return mark.content.length;
+    }
+
+    return getLength(mark);
 }
 
 function getLength(mark: HasLength): number {

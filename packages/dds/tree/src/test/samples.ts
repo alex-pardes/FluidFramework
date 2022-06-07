@@ -486,13 +486,13 @@ export namespace SplitRange {
         frames: [{
             marks: {
                 foo: [
-                    { type: "DeleteStart", op: 0 },
-                    2,
-                    { type: "End", op: 0 },
-                    1,
                     { type: "DeleteStart", op: 1 },
-                    3,
+                    2,
                     { type: "End", op: 1 },
+                    1,
+                    { type: "DeleteStart", op: 0 },
+                    3,
+                    { type: "End", op: 0 },
                 ],
             },
         }],

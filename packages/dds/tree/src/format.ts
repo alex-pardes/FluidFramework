@@ -101,7 +101,7 @@ export namespace Original {
     export type ObjMark =
         | ModsMark
         | AttachMark
-        | SliceBound;
+        | RangeBound;
 
     export type Mark =
         | ObjMark;
@@ -217,7 +217,7 @@ export namespace Original {
         type: "End";
     }
 
-    export type SliceBound = MoveOutStart | DeleteStart | RangeEnd;
+    export type RangeBound = MoveOutStart | DeleteStart | RangeEnd;
 
     /**
      * The contents of a node to be created
@@ -269,7 +269,7 @@ export namespace Rebased {
     export interface Modify<TMark = Mark> extends Original.Modify<TMark> {}
     export type MoveOutStart = Original.MoveOutStart;
     export type DeleteStart = Original.DeleteStart;
-    export type SliceEnd = Original.RangeEnd;
+    export type RangeEnd = Original.RangeEnd;
     export type SetValue = Original.SetValue;
     export type MoveEntry = Original.MoveEntry;
     export type ProtoNode = Original.ProtoNode;
@@ -351,10 +351,10 @@ export namespace Rebased {
     export type AttachMark =
         | Insert
         | MoveIn;
-    export type SliceBound =
+    export type RangeBound =
         | MoveOutStart
         | DeleteStart
-        | SliceEnd;
+        | RangeEnd;
     export type PriorSliceBound =
         | PriorDeleteStart
         | PriorMoveOutStart
@@ -362,18 +362,16 @@ export namespace Rebased {
     export type ObjMark =
         | ModsMark
         | AttachMark
-        | SliceBound
+        | RangeBound
         | ReturnSlice
         | ReturnSet
         | ReviveSet
         | ReviveSlice
         | Prior;
 
-    export type SliceStart =
+    export type RangeStart =
         | MoveOutStart
-        | DeleteStart
-        | PriorDeleteStart
-        | PriorMoveOutStart;
+        | DeleteStart;
 
     export type Prior = PriorDetach | PriorSliceBound;
 
@@ -435,7 +433,7 @@ export namespace Squashed {
     export type HasSeqNumber = Rebased.HasSeqNumber;
     export type HasSliceId = Rebased.HasOpId;
     export type MoveEntry = Rebased.MoveEntry;
-    export type SliceEnd = Rebased.SliceEnd;
+    export type SliceEnd = Rebased.RangeEnd;
     export type ReturnSet = Rebased.ReturnSet;
     export type ReturnSlice = Rebased.ReturnSlice;
     export type ReviveSet = Rebased.ReviveSet;
