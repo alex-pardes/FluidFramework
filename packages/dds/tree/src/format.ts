@@ -275,6 +275,7 @@ export namespace Rebased {
     export type ProtoNode = Original.ProtoNode;
     export type HasOpId = Original.HasOpId;
     export type Place = Original.Place;
+    export type Attach = Original.Attach;
 
     export interface Transaction {
         // client: ClientId;
@@ -387,12 +388,12 @@ export namespace Rebased {
         type: "RevertValue";
     }
 
-    export interface Insert extends Place, HasOpId {
+    export interface Insert extends Attach {
         type: "Insert";
         content: ProtoNode[];
     }
 
-    export interface MoveIn extends Place, HasLength, HasOpId {
+    export interface MoveIn extends Place, HasLength {
         type: "MoveIn";
     }
 

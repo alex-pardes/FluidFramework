@@ -16,6 +16,7 @@ import {
 	InterleavedInserts,
     ModifiesAtSamePosition,
     PreviousInsert,
+    SplitRange,
 } from "./samples";
 import { deepFreeze } from "./utils";
 
@@ -73,6 +74,16 @@ describe(rebase.name, () => {
                     InsertBeforeModify.e1,
                     InsertBeforeModify.e2,
                     InsertBeforeModify.e2_r_e1,
+                );
+			});
+		});
+
+        describe("Delete split by insert", () => {
+			it("e2", () => {
+                testRebase(
+                    SplitRange.e1,
+                    SplitRange.e2,
+                    SplitRange.e2_r_e1,
                 );
 			});
 		});

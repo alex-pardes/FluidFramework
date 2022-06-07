@@ -3,7 +3,7 @@
  * Licensed under the MIT License.
  */
 
-import { Sibling, Sequenced as S } from "../format";
+import { Sibling, Sequenced as S, Commutativity } from "../format";
 
 export namespace PreviousInsert {
     export const e1: S.Transaction = {
@@ -445,6 +445,54 @@ export namespace DeleteMergingInsertPositions {
                         content: [{ id: "0" }],
                         lineage: [{ seq: 1, op: 0, offset: 2 }],
                     },
+                ],
+            },
+        }],
+    };
+}
+
+export namespace SplitRange {
+    export const e1: S.Transaction = {
+        ref: 0,
+        seq: 1,
+        frames: [{
+            marks: {
+                foo: [
+                    2,
+                    { type: "Insert", op: 0, content: [{ id: "0" }], commute: Commutativity.None },
+                ],
+            },
+        }],
+    };
+
+    export const e2: S.Transaction = {
+        ref: 0,
+        seq: 2,
+        frames: [{
+            marks: {
+                foo: [
+                    { type: "DeleteStart", op: 0 },
+                    5,
+                    { type: "End", op: 0 },
+                ],
+            },
+        }],
+    };
+
+    export const e2_r_e1: S.Transaction = {
+        ref: 0,
+        newRef: 1,
+        seq: 2,
+        frames: [{
+            marks: {
+                foo: [
+                    { type: "DeleteStart", op: 0 },
+                    2,
+                    { type: "End", op: 0 },
+                    1,
+                    { type: "DeleteStart", op: 1 },
+                    3,
+                    { type: "End", op: 1 },
                 ],
             },
         }],
