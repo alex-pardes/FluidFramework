@@ -51,6 +51,7 @@ function rebaseChangeFrame(
 
 interface RebaseState {
     numMarks: number;
+    movedMarks: Map<OpId, R.Mark>;
 }
 
 function rebaseOverFrame(
@@ -58,7 +59,7 @@ function rebaseOverFrame(
 	base: R.ChangeFrame,
 	baseSeq: SeqNumber,
 ): void {
-    const state = { numMarks: countNodeOps(orig.marks) };
+    const state = { numMarks: countNodeOps(orig.marks), movedMarks: new Map() };
     rebaseNodeMarks(orig.marks, base.marks, baseSeq, state);
     handleMoveIns(orig.marks, base.marks, state);
 }
@@ -403,6 +404,7 @@ function getSideWithPriority(mark: R.Mark, isBase: boolean): number {
             }
             return getSide(mark) === Sibling.Prev ? -1 : 1;
 
+        // TODO: What should order be when both marks are ranges with same side preference?
         case "MoveOutStart":
         case "DeleteStart":
         case "End":

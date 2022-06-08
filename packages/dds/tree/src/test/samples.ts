@@ -498,3 +498,50 @@ export namespace SplitRange {
         }],
     };
 }
+
+export namespace FollowMove {
+    export const e1: S.Transaction = {
+        ref: 0,
+        seq: 1,
+        frames: [{
+            marks: {
+                foo: [
+                    { type: "MoveOutStart", op: 0, side: Sibling.Prev },
+                    2,
+                    { type: "End", op: 0, side: Sibling.Next },
+                ],
+                bar: [
+                    3,
+                    { type: "MoveIn", op: 0 },
+                ],
+            },
+        }],
+    };
+
+    export const e2: S.Transaction = {
+        ref: 0,
+        seq: 2,
+        frames: [{
+            marks: {
+                foo: [
+                    1,
+                    { type: "Insert", op: 0, content: [{ id: "0" }] },
+                ],
+            },
+        }],
+    };
+
+    export const e2_r_e1: S.Transaction = {
+        ref: 0,
+        newRef: 1,
+        seq: 2,
+        frames: [{
+            marks: {
+                bar: [
+                    2,
+                    { type: "Insert", op: 0, content: [{ id: "0" }] },
+                ],
+            },
+        }],
+    };
+}

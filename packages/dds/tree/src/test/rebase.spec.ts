@@ -11,6 +11,7 @@ import {
 } from "../format";
 import {
 	DeleteMergingInsertPositions,
+    FollowMove,
     InsertAtSameIndexAsModify,
 	InsertBeforeModify,
 	InterleavedInserts,
@@ -135,6 +136,16 @@ describe(rebase.name, () => {
                     DeleteMergingInsertPositions.e3_r_e2,
                     DeleteMergingInsertPositions.e4_r_e2,
                     DeleteMergingInsertPositions.e4_r_e3,
+                );
+			});
+		});
+
+        describe.only("Insert follows slice move", () => {
+			it("e2", () => {
+                testRebase(
+                    FollowMove.e1,
+                    FollowMove.e2,
+                    FollowMove.e2_r_e1,
                 );
 			});
 		});
