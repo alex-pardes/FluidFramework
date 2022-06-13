@@ -391,7 +391,7 @@ export namespace Rebased {
         content: ProtoNode[];
     }
 
-    export interface MoveIn extends Place, HasLength {
+    export interface MoveIn extends Attach, HasLength {
         type: "MoveIn";
     }
 

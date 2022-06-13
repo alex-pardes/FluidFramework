@@ -122,7 +122,6 @@ describe(rebase.name, () => {
                 );
 			});
 
-
 			it("e4 over e2", () => {
                 testRebase(
                     DeleteMergingInsertPositions.e2_r_e1,

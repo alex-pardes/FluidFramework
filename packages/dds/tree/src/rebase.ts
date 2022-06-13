@@ -14,6 +14,7 @@ import {
     OpId,
 	SeqNumber,
     Sibling,
+    Commutativity,
 } from "./format";
 import {
 	clone,
@@ -51,8 +52,10 @@ function rebaseChangeFrame(
 
 interface RebaseState {
     numMarks: number;
-    movedMarks: Map<OpId, R.Mark>;
+    movedMarks: MoveTable;
 }
+
+type MoveTable = Map<OpId, R.Mark[]>;
 
 function rebaseOverFrame(
 	orig: R.ChangeFrame,
@@ -61,14 +64,7 @@ function rebaseOverFrame(
 ): void {
     const state = { numMarks: countNodeOps(orig.marks), movedMarks: new Map() };
     rebaseNodeMarks(orig.marks, base.marks, baseSeq, state);
-    handleMoveIns(orig.marks, base.marks, state);
-}
-
-function handleMoveIns(
-    orig: R.NodeMarks,
-    base: R.NodeMarks,
-    state: RebaseState,
-): void {
+    handleMoveIns(orig.marks, base.marks, state.movedMarks);
 }
 
 function rebaseNodeMarks(
@@ -82,6 +78,7 @@ function rebaseNodeMarks(
     }
 }
 
+// TODO: Should return whether there are any marks remaining in the trait so we can purge empty traits
 function rebaseTraitMarks(
 	curr: R.TraitMarks,
 	base: R.TraitMarks,
@@ -115,12 +112,21 @@ function rebaseTraitMarks(
             rebaseNodeMarks(currMark.modify, baseMark.modify, baseSeq, state);
         }
         if (cmp <= 0) {
+            let shouldAdvance = true;
             if (baseRangeStart !== undefined) {
                 // TODO: Check if this change should be marked inactive
                 const offsetIntoRange = currMarkWithIndex.index - baseRangeStart;
-                sizeChange -= offsetIntoRange;
-                baseRangeStart = currMarkWithIndex.index;
-                addToLineage(currMark, baseSeq, (activeBaseRangeOp as R.Place).op, offsetIntoRange);
+
+                assert(activeBaseRangeOp !== undefined, "");
+                if (activeBaseRangeOp.type === "MoveOutStart" && followsMoves(currMark)) {
+                    appendToMap(state.movedMarks, activeBaseRangeOp.op, currMark);
+                    removeMark(currIterator);
+                    shouldAdvance = false;
+                } else {
+                    sizeChange -= offsetIntoRange;
+                    baseRangeStart = currMarkWithIndex.index;
+                    addToLineage(currMark, baseSeq, (activeBaseRangeOp as R.Place).op, offsetIntoRange);
+                }
             } else if (
                 prevBaseMarkWithIndex?.index === currMarkWithIndex.index &&
                 prevBaseMarkWithIndex.mark?.type === "End"
@@ -141,8 +147,11 @@ function rebaseTraitMarks(
                 default:
                     break;
             }
-            adjustOffsetAndAdvance(currIterator, sizeChange);
-            sizeChange = 0;
+
+            if (shouldAdvance) {
+                adjustOffsetAndAdvance(currIterator, sizeChange);
+                sizeChange = 0;
+            }
         }
         if (cmp >= 0) {
             switch (baseMark.type) {
@@ -169,6 +178,7 @@ function rebaseTraitMarks(
                     break;
                 }
                 case "DeleteStart":
+                case "MoveOutStart":
                     activeBaseRangeOp = baseMark;
                     if (baseRangeStart === undefined) {
                         baseRangeStart = baseMarkWithIndex.index;
@@ -199,6 +209,35 @@ function rebaseTraitMarks(
         }
         adjustOffsetAndAdvance(currIterator, sizeChange);
     }
+}
+
+function handleMoveIns(
+    orig: R.NodeMarks,
+    base: R.NodeMarks,
+    movedMarks: MoveTable,
+): void {
+    for (const trait of Object.keys(base)) {
+        const newMarks: R.TraitMarks = [];
+        handleTraitMoveIns(orig[trait] ?? newMarks, base[trait], movedMarks);
+        if (newMarks.length > 0) {
+            Object.defineProperty(orig, trait, newMarks);
+        }
+    }
+}
+
+function handleTraitMoveIns(
+    orig: R.TraitMarks,
+    base: R.TraitMarks,
+    movedMarks: MoveTable,
+): void {
+    // Walk both, handle move ins if necessary, potentially add new modify when recursing
+}
+
+function appendToMap<K, V>(map: Map<K, V[]>, key: K, val: V) {
+    if (!map.has(key)) {
+        map.set(key, []);
+    }
+    (map.get(key) as V[]).push(val);
 }
 
 function countNodeOps(marks: R.NodeMarks): number {
@@ -395,6 +434,16 @@ function insertMark(iterator: TraitMarksIterator, offset: Offset, mark: R.Mark) 
     iterator.marks.splice(iterator.markIndex, 0, offset, mark);
 }
 
+function removeMark(iterator: TraitMarksIterator) {
+    const offset = getNextOffset(iterator);
+    iterator.marks.splice(iterator.markIndex, offset === 0 ? 1 : 2);
+
+    if (isValid(iterator)) {
+        // Merge the offset before the removed mark into the next offset
+        adjustOffset(iterator, offset);
+    }
+}
+
 function getSideWithPriority(mark: R.Mark, isBase: boolean): number {
     switch (mark.type) {
         case "Insert":
@@ -420,6 +469,16 @@ function getSideWithPriority(mark: R.Mark, isBase: boolean): number {
 
 function getSide(mark: R.Place): Sibling {
     return mark.side ?? Sibling.Prev;
+}
+
+function followsMoves(mark: R.Mark): boolean {
+    switch (mark.type) {
+        case "Insert":
+        case "MoveIn":
+            return (mark.commute ?? Commutativity.Full) !== Commutativity.None;
+        default:
+            return false;
+    }
 }
 
 function getSize(mark: R.AttachMark): number {
