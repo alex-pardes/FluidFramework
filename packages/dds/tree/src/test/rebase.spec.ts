@@ -139,7 +139,7 @@ describe(rebase.name, () => {
 			});
 		});
 
-        describe.only("Insert follows slice move", () => {
+        describe("Insert follows slice move", () => {
 			it("e2", () => {
                 testRebase(
                     FollowMove.e1,

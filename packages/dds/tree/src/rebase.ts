@@ -87,127 +87,70 @@ function rebaseTraitMarks(
 ): void {
     const currIterator = getIterator(curr);
     const baseIterator = getIterator(base);
-    let sizeChange = 0;
 
-    // TODO: Consider multiple active ranges
-    let activeBaseRangeOp: R.RangeStart | undefined;
-    let baseRangeStart;
-    let prevBaseMarkWithIndex;
-    let activeCurrRangeOp: R.RangeStart | undefined;
-    let currRangeStart;
-
-    while (isValid(currIterator) && isValid(baseIterator)) {
-        const currMarkWithIndex = getMark(currIterator);
-        const baseMarkWithIndex = getMark(baseIterator);
-        const cmp = compareMarkPositions(currMarkWithIndex, baseMarkWithIndex);
-
+    while (hasNextMark(currIterator)) {
+        const currMarkWithIndex = getNextMarkForce(currIterator);
         const currMark = currMarkWithIndex.mark;
-        const baseMark = baseMarkWithIndex.mark;
 
-        if (cmp === 0) {
+        if (currIterator.activeRange !== undefined) {
+            const splittingMark = findSplittingMark(baseIterator, currMarkWithIndex);
+            if (splittingMark !== undefined) {
+                const size = getSize(splittingMark.mark);
+                const offset = splittingMark.index - currIterator.activeRange.index;
+                splitRange(
+                    currIterator,
+                    currIterator.activeRange.mark,
+                    offset + baseIterator.sizeChange,
+                    size,
+                    state.numMarks,
+                );
+
+                state.numMarks++;
+                baseIterator.sizeChange = 0;
+                continue;
+            }
+        }
+
+        advanceUpTo(baseIterator, currMarkWithIndex);
+        const nextBaseMarkWithIndex = getNextMark(baseIterator);
+        if (
+            nextBaseMarkWithIndex !== undefined &&
+            compareMarkPositions(currMarkWithIndex, nextBaseMarkWithIndex) === 0
+        ) {
+            const baseMark = nextBaseMarkWithIndex.mark;
             assert(
                 currMark.type === "Modify" && baseMark.type === "Modify",
                 "Only modifies should be at identical positions",
             );
             rebaseNodeMarks(currMark.modify, baseMark.modify, baseSeq, state);
         }
-        if (cmp <= 0) {
-            let shouldAdvance = true;
-            if (baseRangeStart !== undefined) {
-                // TODO: Check if this change should be marked inactive
-                const offsetIntoRange = currMarkWithIndex.index - baseRangeStart;
 
-                assert(activeBaseRangeOp !== undefined, "");
-                if (activeBaseRangeOp.type === "MoveOutStart" && followsMoves(currMark)) {
-                    appendToMap(state.movedMarks, activeBaseRangeOp.op, currMark);
-                    removeMark(currIterator);
-                    shouldAdvance = false;
-                } else {
-                    sizeChange -= offsetIntoRange;
-                    baseRangeStart = currMarkWithIndex.index;
-                    addToLineage(currMark, baseSeq, (activeBaseRangeOp as R.Place).op, offsetIntoRange);
-                }
-            } else if (
-                prevBaseMarkWithIndex?.index === currMarkWithIndex.index &&
-                prevBaseMarkWithIndex.mark?.type === "End"
-            ) {
-                addToLineage(currMark, baseSeq, prevBaseMarkWithIndex.mark.op, Infinity);
-            } else if (baseMarkWithIndex.index === currMarkWithIndex.index && baseMark.type === "End") {
-                addToLineage(currMark, baseSeq, baseMark.op, 0);
-            }
-            switch (currMark.type) {
-                case "DeleteStart":
-                case "MoveOutStart":
-                    activeCurrRangeOp = currMark;
-                    currRangeStart = currMarkWithIndex.index;
-                    break;
-                case "End":
-                    activeCurrRangeOp = undefined;
-                    currRangeStart = undefined;
-                default:
-                    break;
-            }
-
-            if (shouldAdvance) {
-                adjustOffsetAndAdvance(currIterator, sizeChange);
-                sizeChange = 0;
-            }
+        if (baseIterator.activeRange?.mark.type === "MoveOutStart" && followsMoves(currMark)) {
+            appendToMap(state.movedMarks, baseIterator.activeRange.mark.op, currMark);
+            removeMark(currIterator);
+            continue;
         }
-        if (cmp >= 0) {
-            switch (baseMark.type) {
-                case "Insert":
-                case "MoveIn": {
-                    const size = getSize(baseMark);
-                    if (activeCurrRangeOp !== undefined) {
-                        // TODO: Compute this correctly
-                        const isRemovedByRange = false;
-                        if (isRemovedByRange) {
-                            break;
-                        }
 
-                        assert(currRangeStart !== undefined, "Range start should be set if there is an active range");
-                        const offset = baseMarkWithIndex.index - currRangeStart;
-                        splitRange(currIterator, activeCurrRangeOp, offset + sizeChange, size, state.numMarks);
-                        state.numMarks++;
-                        activeCurrRangeOp = undefined;
-                        currRangeStart = undefined;
-                        sizeChange = 0;
-                    } else {
-                        sizeChange += size;
-                    }
-                    break;
-                }
-                case "DeleteStart":
-                case "MoveOutStart":
-                    activeBaseRangeOp = baseMark;
-                    if (baseRangeStart === undefined) {
-                        baseRangeStart = baseMarkWithIndex.index;
-                    }
-                    break;
-
-                case "End":
-                    assert(baseRangeStart !== undefined, "Range start should be set when encountering a range end");
-                    sizeChange -= baseMarkWithIndex.index - baseRangeStart;
-                    activeBaseRangeOp = undefined;
-                    baseRangeStart = undefined;
-                    break;
-
-                default:
-                    break;
-            }
-
-            prevBaseMarkWithIndex = baseMarkWithIndex;
-            advance(baseIterator);
+        const prevBaseMarkWithIndex = getPrevMark(baseIterator);
+        if (baseIterator.activeRange !== undefined) {
+            const offsetIntoRange = currMarkWithIndex.index - baseIterator.activeRange.index;
+            addToLineage(currMark, baseSeq, (baseIterator.activeRange.mark.op), offsetIntoRange);
+        } else if (
+            prevBaseMarkWithIndex?.index === currMarkWithIndex.index &&
+            prevBaseMarkWithIndex.mark?.type === "End"
+        ) {
+            addToLineage(currMark, baseSeq, prevBaseMarkWithIndex.mark.op, Infinity);
+        } else if (
+            nextBaseMarkWithIndex?.index === currMarkWithIndex.index &&
+            nextBaseMarkWithIndex.mark.type === "End"
+        ) {
+            addToLineage(currMark, baseSeq, nextBaseMarkWithIndex.mark.op, 0);
         }
-    }
 
-    if (isValid(currIterator)) {
-        // TODO: Deduplicate this logic
-        const currMarkWithIndex = getMark(currIterator);
-        if (prevBaseMarkWithIndex?.index === currMarkWithIndex.index && prevBaseMarkWithIndex.mark?.type === "End") {
-            addToLineage(currMarkWithIndex.mark, baseSeq, prevBaseMarkWithIndex.mark.op, Infinity);
-        }
-        adjustOffsetAndAdvance(currIterator, sizeChange);
+        // TODO: Could advance up to next base mark?
+        // Done if no more base marks and curr is past index of prev base mark?
+        adjustOffsetAndAdvance(currIterator, baseIterator.sizeChange);
+        baseIterator.sizeChange = 0;
     }
 }
 
@@ -290,10 +233,11 @@ function splitRange(
     advance(iterator);
     insertMark(iterator, skippedLength, startMark);
     startOp.op = newOpId;
+    iterator.activeRange = undefined;
 }
 
-interface MarkWithIndex {
-    mark: R.Mark;
+interface MarkWithIndex<TMark extends R.Mark = R.Mark> {
+    mark: TMark;
     index: Index;
 }
 
@@ -369,21 +313,39 @@ interface TraitMarksIterator {
     marks: R.TraitMarks;
     markIndex: number;
     traitIndex: Index;
+
+    // How far into the next offset `traitIndex` is
+    offsetConsumed: Offset;
+    sizeChange: number;
+
+    // TODO: Consider multiple active ranges
+    activeRange: MarkWithIndex<R.RangeStart> | undefined;
 }
 
 function getIterator(marks: R.TraitMarks): TraitMarksIterator {
-    return { marks, markIndex: 0, traitIndex: 0 };
+    return {
+        marks,
+        markIndex: 0,
+        traitIndex: 0,
+        offsetConsumed: 0,
+        sizeChange: 0,
+        activeRange: undefined,
+    };
 }
 
 function hasOffset(iterator: TraitMarksIterator): boolean {
     return R.isOffset(iterator.marks[iterator.markIndex]);
 }
 
-function isValid(iterator: TraitMarksIterator): boolean {
+function hasNextMark(iterator: TraitMarksIterator): boolean {
     return iterator.markIndex < iterator.marks.length;
 }
 
-function getMark(iterator: TraitMarksIterator): MarkWithIndex {
+function getNextMark(iterator: TraitMarksIterator): MarkWithIndex | undefined {
+    if (!hasNextMark(iterator)) {
+        return undefined;
+    }
+
     const offset = getNextOffset(iterator);
     const markIndex = hasOffset(iterator) ? iterator.markIndex + 1 : iterator.markIndex;
     return {
@@ -392,18 +354,100 @@ function getMark(iterator: TraitMarksIterator): MarkWithIndex {
     };
 }
 
+function getNextMarkForce(iterator: TraitMarksIterator): MarkWithIndex {
+    return getNextMark(iterator) as MarkWithIndex;
+}
+
+function getPrevMark(iterator: TraitMarksIterator): MarkWithIndex | undefined {
+    if (iterator.markIndex === 0) {
+        return undefined;
+    }
+
+    return {
+        mark: iterator.marks[iterator.markIndex - 1] as R.Mark,
+        index: iterator.traitIndex - iterator.offsetConsumed,
+    };
+}
+
 function getNextOffset(iterator: TraitMarksIterator): Offset {
     return hasOffset(iterator) ? iterator.marks[iterator.markIndex] as Offset : 0;
 }
 
-function advance(iterator: TraitMarksIterator): void {
-    advanceI(iterator, getNextOffset(iterator));
+function advance(iterator: TraitMarksIterator, computeSizeChange: boolean = true): void {
+    advanceI(iterator, getNextOffset(iterator), computeSizeChange);
 }
 
-function advanceI(iterator: TraitMarksIterator, offset: Offset): void {
+function advanceUpTo(iterator: TraitMarksIterator, mark: MarkWithIndex): void {
+    while (hasNextMark(iterator) && compareMarkPositions(mark, getNextMarkForce(iterator)) > 0) {
+        advance(iterator);
+    }
+
+    if (iterator.activeRange) {
+        iterator.sizeChange -= mark.index - iterator.traitIndex;
+    }
+
+    iterator.offsetConsumed += mark.index - iterator.traitIndex;
+    iterator.traitIndex = mark.index;
+}
+
+function findSplittingMark(iterator: TraitMarksIterator, mark: MarkWithIndex): MarkWithIndex<R.AttachMark> | undefined {
+    while (hasNextMark(iterator) && compareMarkPositions(mark, getNextMarkForce(iterator)) > 0) {
+        const nextMark = getNextMarkForce(iterator);
+        let computeSizeChange = true;
+        switch (nextMark.mark.type) {
+            case "Insert":
+            case "MoveIn": {
+                computeSizeChange = false;
+                // TODO: Compute this correctly
+                const isRemovedByRange = false;
+                if (!isRemovedByRange) {
+                    advance(iterator, false);
+                    return nextMark as MarkWithIndex<R.AttachMark>;
+                }
+                break;
+            }
+            default:
+                break;
+        }
+
+        advance(iterator, computeSizeChange);
+    }
+
+    return undefined;
+}
+
+function advanceI(iterator: TraitMarksIterator, offset: Offset, computeSizeChange: boolean = true): void {
+    const markWithIndex = getNextMarkForce(iterator);
+    const mark = markWithIndex.mark;
+    switch (mark.type) {
+        case "Insert":
+        case "MoveIn": {
+            if (computeSizeChange) {
+                iterator.sizeChange += getSize(mark);
+            }
+            break;
+        }
+        case "DeleteStart":
+        case "MoveOutStart":
+            iterator.activeRange = markWithIndex as MarkWithIndex<R.RangeStart>;
+            break;
+
+        case "End":
+            assert(iterator.activeRange !== undefined, "Should be matching range start for this range end");
+            if (computeSizeChange) {
+                iterator.sizeChange -= markWithIndex.index - (iterator.activeRange.index + iterator.offsetConsumed);
+            }
+            iterator.activeRange = undefined;
+            break;
+
+        default:
+            break;
+    }
+
     iterator.traitIndex += offset;
     const markLength = hasOffset(iterator) ? 2 : 1;
     iterator.markIndex += markLength;
+    iterator.offsetConsumed = 0;
 }
 
 // Returns the offset before the adjustment
@@ -438,7 +482,7 @@ function removeMark(iterator: TraitMarksIterator) {
     const offset = getNextOffset(iterator);
     iterator.marks.splice(iterator.markIndex, offset === 0 ? 1 : 2);
 
-    if (isValid(iterator)) {
+    if (hasNextMark(iterator)) {
         // Merge the offset before the removed mark into the next offset
         adjustOffset(iterator, offset);
     }
