@@ -538,7 +538,7 @@ export namespace FollowMove {
         frames: [{
             marks: {
                 bar: [
-                    2,
+                    4,
                     { type: "Insert", op: 0, content: [{ id: "0" }] },
                 ],
             },

@@ -55,7 +55,7 @@ interface RebaseState {
     movedMarks: MoveTable;
 }
 
-type MoveTable = Map<OpId, R.Mark[]>;
+type MoveTable = Map<OpId, R.TraitMarks>;
 
 function rebaseOverFrame(
 	orig: R.ChangeFrame,
@@ -75,10 +75,12 @@ function rebaseNodeMarks(
 ): void {
     for (const trait of Object.keys(orig)) {
         rebaseTraitMarks(orig[trait], base[trait] ?? [], baseSeq, state);
+        if (orig[trait].length === 0) {
+            delete orig[trait];
+        }
     }
 }
 
-// TODO: Should return whether there are any marks remaining in the trait so we can purge empty traits
 function rebaseTraitMarks(
 	curr: R.TraitMarks,
 	base: R.TraitMarks,
@@ -114,8 +116,9 @@ function rebaseTraitMarks(
         advanceUpTo(baseIterator, currMarkWithIndex);
         const nextBaseMarkWithIndex = getNextMark(baseIterator);
         if (
-            nextBaseMarkWithIndex !== undefined &&
-            compareMarkPositions(currMarkWithIndex, nextBaseMarkWithIndex) === 0
+            nextBaseMarkWithIndex?.index === currMarkWithIndex.index &&
+            currMarkWithIndex.mark.type === "Modify"
+            && nextBaseMarkWithIndex.mark.type === "Modify"
         ) {
             const baseMark = nextBaseMarkWithIndex.mark;
             assert(
@@ -123,10 +126,15 @@ function rebaseTraitMarks(
                 "Only modifies should be at identical positions",
             );
             rebaseNodeMarks(currMark.modify, baseMark.modify, baseSeq, state);
+            if (Object.keys(currMark.modify).length === 0) {
+                removeMark(currIterator);
+                continue;
+            }
         }
 
         if (baseIterator.activeRange?.mark.type === "MoveOutStart" && followsMoves(currMark)) {
-            appendToMap(state.movedMarks, baseIterator.activeRange.mark.op, currMark);
+            const offset = currMarkWithIndex.index - baseIterator.activeRange.index;
+            addToMoveTable(state.movedMarks, baseIterator.activeRange.mark.op, currMark, offset);
             removeMark(currIterator);
             continue;
         }
@@ -163,7 +171,7 @@ function handleMoveIns(
         const newMarks: R.TraitMarks = [];
         handleTraitMoveIns(orig[trait] ?? newMarks, base[trait], movedMarks);
         if (newMarks.length > 0) {
-            Object.defineProperty(orig, trait, newMarks);
+            Object.defineProperty(orig, trait, { value: newMarks, enumerable: true, writable: true });
         }
     }
 }
@@ -173,7 +181,50 @@ function handleTraitMoveIns(
     base: R.TraitMarks,
     movedMarks: MoveTable,
 ): void {
-    // Walk both, handle move ins if necessary, potentially add new modify when recursing
+    const origIterator = getIterator(orig);
+    const baseIterator = getIterator(base);
+
+    while (hasNextMark(baseIterator)) {
+        const baseMark = getNextMarkForce(baseIterator);
+        advanceUpTo(origIterator, baseMark);
+        const origMark = getNextMark(origIterator);
+        if (baseMark.mark.type === "Modify") {
+            const origHasModify = origMark?.index === baseMark.index && origMark.mark.type === "Modify";
+            const origModify = origHasModify ? (origMark.mark as R.Modify).modify : { };
+            handleMoveIns(origModify, baseMark.mark.modify, movedMarks);
+            if (!origHasModify && Object.keys(origModify).length > 0) {
+                insertMark(origIterator, 0, { type: "Modify", modify: origModify });
+            }
+        }
+
+        if (baseMark.mark.type === "MoveIn" && movedMarks.has(baseMark.mark.op)) {
+            const movedIterator = getIterator(movedMarks.get(baseMark.mark.op) as R.TraitMarks);
+            while (hasNextMark(movedIterator)) {
+                const movedMark = getNextMarkForce(movedIterator).mark;
+                const offset = getNextOffset(movedIterator);
+                insertMark(origIterator, offset, movedMark);
+                advance(origIterator);
+                advance(movedIterator);
+            }
+        }
+
+        advance(baseIterator);
+    }
+}
+
+function addToMoveTable(table: MoveTable, opId: OpId, mark: R.Mark, offset: Offset): void {
+    const relativeOffset = offset - getTotalOffset(table.get(opId) ?? []);
+    if (relativeOffset > 0) {
+        appendToMap(table, opId, relativeOffset);
+    }
+    appendToMap(table, opId, mark);
+}
+
+function getTotalOffset(marks: R.TraitMarks): number {
+    return marks.reduce(
+        (sum: number, mark) => sum + (R.isOffset(mark) ? mark as number : 0),
+        0,
+    );
 }
 
 function appendToMap<K, V>(map: Map<K, V[]>, key: K, val: V) {
@@ -228,7 +279,7 @@ function splitRange(
         startMark.side = Sibling.Prev;
     }
 
-    adjustOffset(iterator, -firstSegmentLength);
+    adjustOffset(iterator, skippedLength);
     insertMark(iterator, firstSegmentLength, endMark);
     advance(iterator);
     insertMark(iterator, skippedLength, startMark);
@@ -475,7 +526,12 @@ function adjustOffsetAndAdvance(iterator: TraitMarksIterator, delta: number): vo
 }
 
 function insertMark(iterator: TraitMarksIterator, offset: Offset, mark: R.Mark) {
-    iterator.marks.splice(iterator.markIndex, 0, offset, mark);
+    const adjustedOffset = offset + iterator.offsetConsumed;
+    if (hasNextMark(iterator)) {
+        adjustOffset(iterator, -adjustedOffset);
+    }
+
+    iterator.marks.splice(iterator.markIndex, 0, adjustedOffset, mark);
 }
 
 function removeMark(iterator: TraitMarksIterator) {
