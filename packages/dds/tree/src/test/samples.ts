@@ -545,3 +545,144 @@ export namespace FollowMove {
         }],
     };
 }
+
+export namespace TwoSliceMovesToSamePosition {
+    export const e1: S.Transaction = {
+        ref: 0,
+        seq: 1,
+        frames: [{
+            marks: {
+                foo: [
+                    { type: "MoveOutStart", op: 0, side: Sibling.Prev },
+                    { type: "End", op: 0, side: Sibling.Next },
+                ],
+                baz: [
+                    { type: "MoveIn", op: 0 },
+                ],
+            },
+        }],
+    };
+
+    export const e2: S.Transaction = {
+        ref: 0,
+        seq: 2,
+        frames: [{
+            marks: {
+                bar: [
+                    { type: "MoveOutStart", op: 0, side: Sibling.Prev },
+                    { type: "End", op: 0, side: Sibling.Next },
+                ],
+                baz: [
+                    { type: "MoveIn", op: 0, side: Sibling.Prev },
+                ],
+            },
+        }],
+    };
+
+    export const e3: S.Transaction = {
+        ref: 0,
+        seq: 3,
+        frames: [{
+            marks: {
+                foo: [
+                    { type: "Insert", op: 0, content: [{ id: "0" }] },
+                ],
+            },
+        }],
+    };
+
+    export const e4: S.Transaction = {
+        ref: 0,
+        seq: 4,
+        frames: [{
+            marks: {
+                bar: [
+                    { type: "Insert", op: 0, content: [{ id: "0" }], side: Sibling.Prev },
+                ],
+            },
+        }],
+    };
+
+    export const e2_r_e1: S.Transaction = {
+        ref: 0,
+        newRef: 1,
+        seq: 2,
+        frames: [{
+            marks: {
+                bar: [
+                    { type: "MoveOutStart", op: 0, side: Sibling.Prev },
+                    { type: "End", op: 0, side: Sibling.Next },
+                ],
+                baz: [
+                    { type: "MoveIn", op: 0, side: Sibling.Prev },
+                ],
+            },
+        }],
+    };
+
+    export const e3_r_e1: S.Transaction = {
+        ref: 0,
+        newRef: 1,
+        seq: 3,
+        frames: [{
+            marks: {
+                baz: [
+                    { type: "Insert", op: 0, content: [{ id: "0" }] },
+                ],
+            },
+        }],
+    };
+
+    export const e3_r_e2: S.Transaction = {
+        ref: 0,
+        newRef: 2,
+        seq: 3,
+        frames: [{
+            marks: {
+                baz: [
+                    { type: "Insert", op: 0, content: [{ id: "0" }] },
+                ],
+            },
+        }],
+    };
+
+    export const e4_r_e1: S.Transaction = {
+        ref: 0,
+        newRef: 1,
+        seq: 4,
+        frames: [{
+            marks: {
+                bar: [
+                    { type: "Insert", op: 0, content: [{ id: "0" }], side: Sibling.Prev },
+                ],
+            },
+        }],
+    };
+
+    export const e4_r_e2: S.Transaction = {
+        ref: 0,
+        newRef: 2,
+        seq: 4,
+        frames: [{
+            marks: {
+                baz: [
+                    { type: "Insert", op: 0, content: [{ id: "0" }], side: Sibling.Prev },
+                ],
+            },
+        }],
+    };
+
+    export const e4_r_e3: S.Transaction = {
+        ref: 0,
+        newRef: 3,
+        seq: 4,
+        frames: [{
+            marks: {
+                baz: [
+                    1,
+                    { type: "Insert", op: 0, content: [{ id: "0" }], side: Sibling.Prev },
+                ],
+            },
+        }],
+    };
+}

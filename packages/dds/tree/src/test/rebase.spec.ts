@@ -18,6 +18,7 @@ import {
     ModifiesAtSamePosition,
     PreviousInsert,
     SplitRange,
+    TwoSliceMovesToSamePosition,
 } from "./samples";
 import { deepFreeze } from "./utils";
 
@@ -145,6 +146,56 @@ describe(rebase.name, () => {
                     FollowMove.e1,
                     FollowMove.e2,
                     FollowMove.e2_r_e1,
+                );
+			});
+		});
+
+        describe("Inserts following separate moves to same position", () => {
+			it("e2", () => {
+                testRebase(
+                    TwoSliceMovesToSamePosition.e1,
+                    TwoSliceMovesToSamePosition.e2,
+                    TwoSliceMovesToSamePosition.e2_r_e1,
+                );
+			});
+
+			it("e3 over e1", () => {
+                testRebase(
+                    TwoSliceMovesToSamePosition.e1,
+                    TwoSliceMovesToSamePosition.e3,
+                    TwoSliceMovesToSamePosition.e3_r_e1,
+                );
+			});
+
+			it("e3 over e2", () => {
+                testRebase(
+                    TwoSliceMovesToSamePosition.e2_r_e1,
+                    TwoSliceMovesToSamePosition.e3_r_e1,
+                    TwoSliceMovesToSamePosition.e3_r_e2,
+                );
+			});
+
+			it("e4 over e1", () => {
+                testRebase(
+                    TwoSliceMovesToSamePosition.e1,
+                    TwoSliceMovesToSamePosition.e4,
+                    TwoSliceMovesToSamePosition.e4_r_e1,
+                );
+			});
+
+			it("e4 over e2", () => {
+                testRebase(
+                    TwoSliceMovesToSamePosition.e2_r_e1,
+                    TwoSliceMovesToSamePosition.e4_r_e1,
+                    TwoSliceMovesToSamePosition.e4_r_e2,
+                );
+			});
+
+			it("e4 over e3", () => {
+                testRebase(
+                    TwoSliceMovesToSamePosition.e3_r_e2,
+                    TwoSliceMovesToSamePosition.e4_r_e2,
+                    TwoSliceMovesToSamePosition.e4_r_e3,
                 );
 			});
 		});
