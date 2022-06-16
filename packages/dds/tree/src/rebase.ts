@@ -531,7 +531,11 @@ function insertMark(iterator: TraitMarksIterator, offset: Offset, mark: R.Mark) 
         adjustOffset(iterator, -adjustedOffset);
     }
 
-    iterator.marks.splice(iterator.markIndex, 0, adjustedOffset, mark);
+    if (adjustedOffset > 0) {
+        iterator.marks.splice(iterator.markIndex, 0, adjustedOffset, mark);
+    } else {
+        iterator.marks.splice(iterator.markIndex, 0, mark);
+    }
 }
 
 function removeMark(iterator: TraitMarksIterator) {
