@@ -134,7 +134,7 @@ function rebaseTraitMarks(
 
         if (baseIterator.activeRange?.mark.type === "MoveOutStart" && followsMoves(currMark)) {
             const offset = currMarkWithIndex.index - baseIterator.activeRange.index;
-            addToMoveTable(state.movedMarks, baseIterator.activeRange.mark.op, currMark, offset);
+            addToMoveTable(state.movedMarks, baseSeq, baseIterator.activeRange.mark.op, currMark, offset);
             removeMark(currIterator);
             continue;
         }
@@ -145,12 +145,16 @@ function rebaseTraitMarks(
             addToLineage(currMark, baseSeq, (baseIterator.activeRange.mark.op), offsetIntoRange);
         } else if (
             prevBaseMarkWithIndex?.index === currMarkWithIndex.index &&
-            prevBaseMarkWithIndex.mark?.type === "End"
+            (prevBaseMarkWithIndex.mark?.type === "End" || prevBaseMarkWithIndex.mark?.type === "MoveIn")
         ) {
             addToLineage(currMark, baseSeq, prevBaseMarkWithIndex.mark.op, Infinity);
         } else if (
             nextBaseMarkWithIndex?.index === currMarkWithIndex.index &&
-            nextBaseMarkWithIndex.mark.type === "End"
+            (
+                nextBaseMarkWithIndex.mark.type === "DeleteStart" ||
+                nextBaseMarkWithIndex.mark.type === "MoveOutStart" ||
+                nextBaseMarkWithIndex.mark.type === "MoveIn"
+            )
         ) {
             addToLineage(currMark, baseSeq, nextBaseMarkWithIndex.mark.op, 0);
         }
@@ -212,7 +216,10 @@ function handleTraitMoveIns(
     }
 }
 
-function addToMoveTable(table: MoveTable, opId: OpId, mark: R.Mark, offset: Offset): void {
+function addToMoveTable(table: MoveTable, seq: SeqNumber, opId: OpId, mark: R.Mark, offset: Offset): void {
+    // This lineage marker would be compared with nodes which were adjacent to the move. Those nodes will have offset
+    // of 0 if they were before the move, and infinity if they were after it, so we can just use an offset of 1.
+    addToLineage(mark, seq, opId, 1);
     const relativeOffset = offset - getTotalOffset(table.get(opId) ?? []);
     if (relativeOffset > 0) {
         appendToMap(table, opId, relativeOffset);

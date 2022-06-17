@@ -512,7 +512,7 @@ export namespace FollowMove {
                 ],
                 bar: [
                     3,
-                    { type: "MoveIn", op: 0 },
+                    { type: "MoveIn", op: 0, length: 2 },
                 ],
             },
         }],
@@ -539,7 +539,12 @@ export namespace FollowMove {
             marks: {
                 bar: [
                     4,
-                    { type: "Insert", op: 0, content: [{ id: "0" }] },
+                    {
+                        type: "Insert",
+                        op: 0,
+                        content: [{ id: "0" }],
+                        lineage: [{ seq: 1, op: 0, offset: 1}],
+                    },
                 ],
             },
         }],
@@ -557,7 +562,7 @@ export namespace TwoSliceMovesToSamePosition {
                     { type: "End", op: 0, side: Sibling.Next },
                 ],
                 baz: [
-                    { type: "MoveIn", op: 0 },
+                    { type: "MoveIn", op: 0, length: 0 },
                 ],
             },
         }],
@@ -573,7 +578,7 @@ export namespace TwoSliceMovesToSamePosition {
                     { type: "End", op: 0, side: Sibling.Next },
                 ],
                 baz: [
-                    { type: "MoveIn", op: 0, side: Sibling.Prev },
+                    { type: "MoveIn", op: 0, length: 0, side: Sibling.Next },
                 ],
             },
         }],
@@ -614,7 +619,13 @@ export namespace TwoSliceMovesToSamePosition {
                     { type: "End", op: 0, side: Sibling.Next },
                 ],
                 baz: [
-                    { type: "MoveIn", op: 0, side: Sibling.Prev },
+                    {
+                        type: "MoveIn",
+                        op: 0,
+                        length: 0,
+                        side: Sibling.Next,
+                        lineage: [{ seq: 1, op: 0, offset: Infinity }],
+                     },
                 ],
             },
         }],
@@ -627,7 +638,12 @@ export namespace TwoSliceMovesToSamePosition {
         frames: [{
             marks: {
                 baz: [
-                    { type: "Insert", op: 0, content: [{ id: "0" }] },
+                    {
+                        type: "Insert",
+                        op: 0,
+                        content: [{ id: "0" }],
+                        lineage: [{ seq: 1, op: 0, offset: 1 }],
+                    },
                 ],
             },
         }],
@@ -640,7 +656,15 @@ export namespace TwoSliceMovesToSamePosition {
         frames: [{
             marks: {
                 baz: [
-                    { type: "Insert", op: 0, content: [{ id: "0" }] },
+                    {
+                        type: "Insert",
+                        op: 0,
+                        content: [{ id: "0" }],
+                        lineage: [
+                            { seq: 1, op: 0, offset: 1 },
+                            { seq: 2, op: 0, offset: 0 },
+                        ],
+                     },
                 ],
             },
         }],
@@ -666,7 +690,13 @@ export namespace TwoSliceMovesToSamePosition {
         frames: [{
             marks: {
                 baz: [
-                    { type: "Insert", op: 0, content: [{ id: "0" }], side: Sibling.Prev },
+                    {
+                        type: "Insert",
+                        op: 0,
+                        content: [{ id: "0" }],
+                        side: Sibling.Prev,
+                        lineage: [{ seq: 2, op: 0, offset: 1 }],
+                    },
                 ],
             },
         }],
@@ -680,7 +710,13 @@ export namespace TwoSliceMovesToSamePosition {
             marks: {
                 baz: [
                     1,
-                    { type: "Insert", op: 0, content: [{ id: "0" }], side: Sibling.Prev },
+                    {
+                        type: "Insert",
+                        op: 0,
+                        content: [{ id: "0" }],
+                        side: Sibling.Prev,
+                        lineage: [{ seq: 2, op: 0, offset: 1 }],
+                    },
                 ],
             },
         }],
