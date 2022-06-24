@@ -16,6 +16,7 @@ import {
 	InsertBeforeModify,
 	InterleavedInserts,
     ModifiesAtSamePosition,
+    MoveOutOfRange,
     PreviousInsert,
     SplitRange,
     TwoSliceMovesToSamePosition,
@@ -199,6 +200,16 @@ describe(rebase.name, () => {
                 );
 			});
 		});
+
+        describe("Split range by moving node", () => {
+			it("e2", () => {
+                testRebase(
+                    MoveOutOfRange.e1,
+                    MoveOutOfRange.e2,
+                    MoveOutOfRange.e2_r_e1,
+                );
+			});
+        });
 	});
 });
 

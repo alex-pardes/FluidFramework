@@ -76,6 +76,7 @@ function rebaseNodeMarks(
     for (const trait of Object.keys(orig)) {
         rebaseTraitMarks(orig[trait], base[trait] ?? [], baseSeq, state);
         if (orig[trait].length === 0) {
+            // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
             delete orig[trait];
         }
     }

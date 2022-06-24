@@ -543,7 +543,7 @@ export namespace FollowMove {
                         type: "Insert",
                         op: 0,
                         content: [{ id: "0" }],
-                        lineage: [{ seq: 1, op: 0, offset: 1}],
+                        lineage: [{ seq: 1, op: 0, offset: 1 }],
                     },
                 ],
             },
@@ -717,6 +717,70 @@ export namespace TwoSliceMovesToSamePosition {
                         side: Sibling.Prev,
                         lineage: [{ seq: 2, op: 0, offset: 1 }],
                     },
+                ],
+            },
+        }],
+    };
+}
+
+export namespace MoveOutOfRange {
+    export const e1: S.Transaction = {
+        ref: 0,
+        seq: 1,
+        frames: [{
+            marks: {
+                foo: [
+                    2,
+                    { type: "MoveOutStart", op: 0 },
+                    1,
+                    { type: "End", op: 0 },
+                ],
+                bar: [{ type: "MoveIn", op: 0 }],
+            },
+        }],
+    };
+
+    export const e2: S.Transaction = {
+        ref: 0,
+        seq: 2,
+        frames: [{
+            marks: {
+                foo: [
+                    { type: "MoveOutStart", op: 0 },
+                    5,
+                    { type: "End", op: 0 },
+                ],
+                baz: [
+                    { type: "MoveIn", op: 0, length: 5 },
+                ],
+            },
+        }],
+    };
+
+    export const e2_r_e1: S.Transaction = {
+        ref: 0,
+        newRef: 1,
+        seq: 2,
+        frames: [{
+            marks: {
+                foo: [
+                    { type: "MoveOutStart", op: 1 },
+                    2,
+                    { type: "End", op: 1 },
+                    1,
+                    { type: "MoveOutStart", op: 0 },
+                    2,
+                    { type: "End", op: 0 },
+                ],
+                bar: [
+                    { type: "MoveOutStart", op: 2 },
+                    1,
+                    { type: "End", op: 2 },
+                ],
+                baz: [
+                    { type: "MoveIn", op: 1, length: 2 },
+                    { type: "MoveIn", op: 2, length: 1 },
+                    { type: "MoveIn", op: 0, length: 2 },
                 ],
             },
         }],
