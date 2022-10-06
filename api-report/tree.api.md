@@ -392,7 +392,7 @@ export type GlobalFieldKeySymbol = Brand<symbol, "GlobalFieldKeySymbol">;
 
 // @public (undocumented)
 export interface HasOpId {
-    id: OpId;
+    id: MarkId;
 }
 
 // @public (undocumented)
@@ -620,6 +620,9 @@ export interface MakeNominal {
 type Mark<TTree = ProtoNode_2> = Skip_2 | Modify<TTree> | Delete | MoveOut | MoveIn | Insert<TTree> | ModifyAndDelete<TTree> | ModifyAndMoveOut<TTree> | MoveInAndModify<TTree> | InsertAndModify<TTree>;
 
 // @public
+export type MarkId = number;
+
+// @public
 type MarkList<TTree = ProtoNode_2> = Mark<TTree>[];
 
 // @public (undocumented)
@@ -805,9 +808,6 @@ type Offset = number;
 
 // @public
 export type Opaque<T extends Brand<any, string>> = T extends Brand<infer ValueType, infer Name> ? BrandedType<ValueType, Name> : never;
-
-// @public
-export type OpId = number;
 
 // @public
 const optional: FieldKind;
@@ -1204,7 +1204,7 @@ export namespace Transposed {
         // (undocumented)
         hops?: TPath[];
         // (undocumented)
-        id: OpId;
+        id: MarkId;
         // (undocumented)
         src: TPath;
     }
@@ -1229,7 +1229,7 @@ export namespace Transposed {
         // (undocumented)
         change: ChangesetTag;
         // (undocumented)
-        id: OpId;
+        id: MarkId;
     }
     // (undocumented)
     export interface Reattach extends HasOpId {

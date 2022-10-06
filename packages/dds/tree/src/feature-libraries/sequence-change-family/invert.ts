@@ -4,7 +4,7 @@
  */
 
 import { fail } from "../../util";
-import { ChangesetTag, isSkipMark, OpId, Transposed as T } from "./changeset";
+import { ChangesetTag, isSkipMark, MarkId, Transposed as T } from "./changeset";
 import { SequenceChangeset } from "./sequenceChangeset";
 
 /**
@@ -35,7 +35,7 @@ export const DUMMY_INVERSE_VALUE = "Dummy inverse value";
  */
 export function invert(change: SequenceChangeset): SequenceChangeset {
     // TODO: support the input change being a squash
-    const opIdToTag = (id: OpId): ChangesetTag => {
+    const opIdToTag = (id: MarkId): ChangesetTag => {
         return DUMMY_INVERT_TAG;
     };
     return {
@@ -43,7 +43,7 @@ export function invert(change: SequenceChangeset): SequenceChangeset {
     };
 }
 
-type IdToTagLookup = (id: OpId) => ChangesetTag;
+type IdToTagLookup = (id: MarkId) => ChangesetTag;
 
 function invertFieldMarks(fieldMarks: T.FieldMarks, opIdToTag: IdToTagLookup): T.FieldMarks {
     const inverseFieldMarks: T.FieldMarks = {};

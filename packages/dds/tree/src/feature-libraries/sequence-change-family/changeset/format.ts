@@ -30,7 +30,7 @@ export namespace Transposed {
 	}
 
 	export interface MoveEntry<TPath = TreeRootPath> {
-		id: OpId;
+		id: MarkId;
 		src: TPath;
 		dst: TPath;
 		hops?: TPath[];
@@ -264,7 +264,7 @@ export namespace Transposed {
 
 	export interface PriorOp {
 		change: ChangesetTag;
-		id: OpId;
+		id: MarkId;
 	}
 }
 
@@ -287,19 +287,22 @@ export enum RangeType {
 }
 
 /**
- * A monotonically increasing positive integer assigned to each change within the changeset.
- * OpIds are scoped to a single changeset, so referring to OpIds across changesets requires
- * qualifying them by change tag.
- *
+ * Uniquely identifies a mark atom within one branch.
+ * Two marks in different branches may use the same ID.
+ * Because a mark can be split when composing changesets, we need each atomic element of a mark to have its own ID.
+ * For example, an insert mark has an ID for each element inserted, since the mark could be decomposed into one inert
+ * mark per element.
+ * As an optimization, we always assign consecutive IDs to atoms in a mark. The mark's ID field is the  ID of the firs
+ * atom in the mark.
  * The uniqueness of IDs is leveraged to uniquely identify the matching move-out for a move-in/return and vice-versa.
  */
-export type OpId = number;
+export type MarkId = number;
 
 export interface HasOpId {
 	/**
 	 * The sequential ID assigned to a change within a transaction.
 	 */
-	id: OpId;
+	id: MarkId;
 }
 
 /**

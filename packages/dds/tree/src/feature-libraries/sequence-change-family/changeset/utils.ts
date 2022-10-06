@@ -5,7 +5,7 @@
 
 import { unreachableCase } from "@fluidframework/common-utils";
 import { fail } from "../../../util";
-import { Skip, Transposed as T } from "./format";
+import { HasOpId, MarkId, Skip, Transposed as T } from "./format";
 
 export function isAttach(mark: T.Mark): mark is T.Attach {
     return isObjMark(mark)
@@ -336,4 +336,12 @@ export function tryExtendMark(lhs: T.ObjectMark, rhs: Readonly<T.ObjectMark>): b
         default: break;
     }
     return false;
+}
+
+export function getMarkAtomId(mark: HasOpId, atomIndex: number): MarkId {
+    return mark.id + atomIndex;
+}
+
+export function areMarkIdsConsecutive(id1: MarkId, id2: MarkId): boolean {
+    return id2 === id1 + 1;
 }

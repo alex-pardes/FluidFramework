@@ -133,7 +133,7 @@ export {
     Transposed,
     TreeForestPath,
     TreeRootPath,
-    OpId,
+    MarkId,
     Skip,
     ChangesetTag,
     Effects,
