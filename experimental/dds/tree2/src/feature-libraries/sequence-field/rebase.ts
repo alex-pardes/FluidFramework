@@ -31,6 +31,7 @@ import {
 	areOutputCellsEmpty,
 	getDetachCellId,
 	getInputCellId,
+	markRenamesCells,
 } from "./utils";
 import {
 	Changeset,
@@ -88,6 +89,33 @@ export function rebase<TNodeChange>(
 		base.change,
 		base.revision,
 		baseIntention,
+		RebaseMode.Rebase,
+		rebaseChild,
+		genId,
+		manager as MoveEffectTable<TNodeChange>,
+		nodeExistenceState,
+	);
+}
+
+export function postbase<TNodeChange>(
+	change: Changeset<TNodeChange>,
+	base: TaggedChange<Changeset<TNodeChange>>,
+	rebaseChild: NodeChangeRebaser<TNodeChange>,
+	genId: IdAllocator,
+	manager: CrossFieldManager,
+	revisionMetadata: RevisionMetadataSource,
+	nodeExistenceState: NodeExistenceState = NodeExistenceState.Alive,
+): Changeset<TNodeChange> {
+	assert(base.revision !== undefined, 0x69b /* Cannot rebase over changeset with no revision */);
+	const baseInfo =
+		base.revision === undefined ? undefined : revisionMetadata.getInfo(base.revision);
+	const baseIntention = baseInfo?.rollbackOf ?? base.revision;
+	return rebaseMarkList(
+		change,
+		base.change,
+		base.revision,
+		baseIntention,
+		RebaseMode.Postbase,
 		rebaseChild,
 		genId,
 		manager as MoveEffectTable<TNodeChange>,
@@ -101,11 +129,17 @@ export type NodeChangeRebaser<TNodeChange> = (
 	stateChange?: NodeExistenceState,
 ) => TNodeChange | undefined;
 
+enum RebaseMode {
+	Rebase,
+	Postbase,
+}
+
 function rebaseMarkList<TNodeChange>(
 	currMarkList: MarkList<TNodeChange>,
 	baseMarkList: MarkList<TNodeChange>,
 	baseRevision: RevisionTag,
 	baseIntention: RevisionTag,
+	mode: RebaseMode,
 	rebaseChild: NodeChangeRebaser<TNodeChange>,
 	genId: IdAllocator,
 	moveEffects: CrossFieldManager<MoveEffect<TNodeChange>>,
@@ -117,6 +151,7 @@ function rebaseMarkList<TNodeChange>(
 		baseIntention,
 		baseMarkList,
 		currMarkList,
+		mode,
 		genId,
 		moveEffects,
 	);
@@ -150,6 +185,7 @@ function rebaseMarkList<TNodeChange>(
 			baseMark,
 			baseRevision,
 			baseIntention,
+			mode,
 			rebaseChild,
 			moveEffects,
 			nodeExistenceState,
@@ -226,6 +262,7 @@ class RebaseQueue<T> {
 		private readonly baseIntention: RevisionTag | undefined,
 		baseMarks: Changeset<T>,
 		newMarks: Changeset<T>,
+		private readonly mode: RebaseMode,
 		genId: IdAllocator,
 		moveEffects: MoveEffectTable<T>,
 	) {
@@ -259,7 +296,7 @@ class RebaseQueue<T> {
 				newMark: generateNoOpWithCellId(dequeuedBaseMark, this.baseIntention),
 			};
 		} else if (areInputCellsEmpty(baseMark) && areInputCellsEmpty(newMark)) {
-			const cmp = compareCellPositions(this.baseIntention, baseMark, newMark);
+			const cmp = compareCellPositions(this.baseIntention, baseMark, newMark, this.mode);
 			if (cmp < 0) {
 				const dequeuedBaseMark = this.baseMarks.dequeueUpTo(-cmp);
 				return {
@@ -323,12 +360,17 @@ function rebaseMark<TNodeChange>(
 	baseMark: Mark<TNodeChange>,
 	baseRevision: RevisionTag,
 	baseIntention: RevisionTag,
+	mode: RebaseMode,
 	rebaseChild: NodeChangeRebaser<TNodeChange>,
 	moveEffects: MoveEffectTable<TNodeChange>,
 	nodeExistenceState: NodeExistenceState,
 ): Mark<TNodeChange> {
 	let rebasedMark = rebaseNodeChange(cloneMark(currMark), baseMark, rebaseChild);
-	if (markEmptiesCells(baseMark)) {
+	if (markRenamesCells(baseMark)) {
+		// TODO: Should also update lineage
+		assert(isDetachMark(baseMark), "Only detach mark can rename cell");
+		rebasedMark.cellId = getDetachCellId(baseMark, baseIntention);
+	} else if (markEmptiesCells(baseMark)) {
 		const moveId = getMarkMoveId(baseMark);
 		if (moveId !== undefined) {
 			assert(isMoveMark(baseMark), 0x6f0 /* Only move marks have move IDs */);
@@ -378,7 +420,7 @@ function rebaseMark<TNodeChange>(
 		const baseMarkIntention = getMarkIntention(baseMark, baseIntention);
 
 		const baseCellId = getDetachCellId(baseMark, baseMarkIntention);
-		rebasedMark = makeDetachedMark(rebasedMark, cloneCellId(baseCellId));
+		rebasedMark = makeDetachedMark(rebasedMark, cloneCellId(baseCellId), mode);
 	} else if (markFillsCells(baseMark)) {
 		if (isMoveMark(baseMark)) {
 			const movedMark = getMovedMark(
@@ -553,8 +595,13 @@ function rebaseNodeChange<TNodeChange>(
 	return withNodeChange(currMark, nodeRebaser(currChange, baseChange));
 }
 
-function makeDetachedMark<T>(mark: Mark<T>, cellId: ChangeAtomId): Mark<T> {
+function makeDetachedMark<T>(mark: Mark<T>, cellId: ChangeAtomId, mode: RebaseMode): Mark<T> {
 	assert(mark.cellId === undefined, 0x69f /* Expected mark to be attached */);
+
+	if (mode === RebaseMode.Postbase && isDetachMark(mark)) {
+		return { ...mark, cellId, isPostbaseResult: true };
+	}
+
 	return { ...mark, cellId };
 }
 
@@ -808,6 +855,7 @@ function compareCellPositions(
 	baseIntention: RevisionTag | undefined,
 	baseMark: EmptyInputCellMark<unknown>,
 	newMark: EmptyInputCellMark<unknown>,
+	mode: RebaseMode,
 ): number {
 	const baseId = getInputCellId(baseMark, baseIntention);
 	const baseLength = baseMark.count;
@@ -860,7 +908,7 @@ function compareCellPositions(
 	if (isNewAttach(newMark)) {
 		// When the marks are at the same position, we use the tiebreak of `newMark`.
 		// TODO: Use specified tiebreak instead of always tiebreaking left.
-		return Infinity;
+		return mode === RebaseMode.Postbase ? -Infinity : Infinity;
 	}
 
 	assert(
@@ -873,7 +921,7 @@ function compareCellPositions(
 	// `newMark` points to cells which were emptied before `baseMark` was created.
 	// We use `baseMark`'s tiebreak policy as if `newMark`'s cells were created concurrently and before `baseMark`.
 	// TODO: Use specified tiebreak instead of always tiebreaking left.
-	return -Infinity;
+	return mode === RebaseMode.Postbase ? Infinity : -Infinity;
 }
 
 function getPositionAmongAdjacentCells(adjacentCells: IdRange[], id: ChangesetLocalId): number {

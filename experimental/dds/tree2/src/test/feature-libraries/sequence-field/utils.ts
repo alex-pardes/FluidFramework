@@ -126,6 +126,48 @@ export function rebaseTagged(
 	return currChange;
 }
 
+export function postbase(change: TestChangeset, base: TaggedChange<TestChangeset>): TestChangeset {
+	deepFreeze(change);
+	deepFreeze(base);
+
+	const metadata = defaultRevisionMetadataFromChanges([base, makeAnonChange(change)]);
+	const moveEffects = SF.newCrossFieldTable();
+	const idAllocator = idAllocatorFromMaxId(getMaxId(change, base.change));
+	let postbasedChange = SF.postbase(
+		change,
+		base,
+		TestChange.rebase,
+		idAllocator,
+		moveEffects,
+		metadata,
+	);
+	if (moveEffects.isInvalidated) {
+		moveEffects.reset();
+		postbasedChange = SF.amendRebase(
+			postbasedChange,
+			base,
+			(a, b) => a,
+			idAllocator,
+			moveEffects,
+			metadata,
+		);
+		assert(!moveEffects.isInvalidated, "Rebase should not need more than one amend pass");
+	}
+	return postbasedChange;
+}
+
+export function postbaseTagged(
+	change: TaggedChange<TestChangeset>,
+	...baseChanges: TaggedChange<TestChangeset>[]
+): TaggedChange<TestChangeset> {
+	let currChange = change;
+	for (const base of baseChanges) {
+		currChange = tagChange(postbase(currChange.change, base), currChange.revision);
+	}
+
+	return currChange;
+}
+
 function resetCrossFieldTable(table: SF.CrossFieldTable) {
 	table.isInvalidated = false;
 	table.srcQueries.clear();

@@ -41,7 +41,7 @@ export { sequenceFieldChangeCodecFactory } from "./sequenceFieldChangeEncoder";
 export { sequenceFieldToDelta, ToDelta } from "./sequenceFieldToDelta";
 export { SequenceFieldEditor, sequenceFieldEditor } from "./sequenceFieldEditor";
 export { MarkListFactory } from "./markListFactory";
-export { amendRebase, NodeChangeRebaser, rebase } from "./rebase";
+export { amendRebase, NodeChangeRebaser, postbase, rebase } from "./rebase";
 export { amendInvert, invert, NodeChangeInverter } from "./invert";
 export { amendCompose, compose, NodeChangeComposer } from "./compose";
 export {

@@ -20,6 +20,7 @@ import {
 	compose,
 	composeAnonChanges,
 	invert,
+	postbaseTagged,
 	rebaseTagged,
 	toDelta,
 	withoutLineage,
@@ -364,5 +365,57 @@ describe("SequenceField - Sandwich Rebasing", () => {
 		const moveRollback = tagRollbackInverse(moveInverse, tag3, tag1);
 		const rebasedUndo = rebaseTagged(undo, moveRollback, move);
 		assert.deepEqual(rebasedUndo, undo);
+	});
+});
+
+describe("SequenceField - Branch postbasing", () => {
+	// This test fails due to the rebaser incorrectly interpreting the order of the cell created by `insertT` and the cell targeted by `deleteB`.
+	// See BUG 5351
+	it("(Insert, delete) ↷ adjacent insert", () => {
+		const insertT = tagChange(Change.insert(0, 1), tag1);
+		const insertA = tagChange(Change.insert(0, 1), tag2);
+		const deleteB = tagChange(Change.delete(0, 1), tag3);
+		const insertT2 = postbaseTagged(insertT, insertA);
+		const deleteB2 = rebaseTagged(deleteB, insertT2);
+		assert.deepEqual(deleteB2.change, deleteB.change);
+	});
+
+	it("[Delete ABC, Revive ABC] ↷ Delete B", () => {
+		const delB = tagChange(Change.delete(1, 1), tag1);
+		const delABC = tagChange(Change.delete(0, 3), tag2);
+		const revABC = tagChange(Change.revive(0, 3, { revision: tag2, localId: id0 }), tag4);
+		const delABC2 = rebaseTagged(delABC, delB);
+		const delB2 = postbaseTagged(delB, delABC);
+		const revABC2 = rebaseTagged(revABC, delB2);
+		// The rebased versions of the local edits should still cancel-out
+		const actual = compose([delABC2, revABC2]);
+		const delta = toDelta(actual);
+		assert.deepEqual(delta, []);
+	});
+
+	it.skip("[Move ABC, Return ABC] ↷ Delete B", () => {
+		const delB = tagChange(Change.delete(1, 1), tag1);
+		const moveABC = tagChange(Change.move(0, 3, 1), tag2);
+		const retABC = tagChange(Change.return(1, 3, 0, { revision: tag2, localId: id0 }), tag4);
+		const movABC2 = rebaseTagged(moveABC, delB);
+		const delB2 = postbaseTagged(delB, moveABC);
+		const retABC2 = rebaseTagged(retABC, delB2);
+		// The rebased versions of the local edits should still cancel-out
+		const actual = compose([movABC2, retABC2]);
+		const delta = toDelta(actual);
+		assert.deepEqual(delta, []);
+	});
+
+	it("[Delete AC, Revive AC] ↷ Insert B", () => {
+		const addB = tagChange(Change.insert(1, 1), tag1);
+		const delAC = tagChange(Change.delete(0, 2), tag2);
+		const revAC = tagChange(Change.revive(0, 2, { revision: tag2, localId: id0 }), tag4);
+		const delAC2 = rebaseTagged(delAC, addB);
+		const addB2 = postbaseTagged(addB, delAC);
+		const revAC2 = rebaseTagged(revAC, addB2);
+		// The rebased versions of the local edits should still cancel-out
+		const actual = compose([delAC2, revAC2]);
+		const delta = toDelta(actual);
+		assert.deepEqual(delta, []);
 	});
 });

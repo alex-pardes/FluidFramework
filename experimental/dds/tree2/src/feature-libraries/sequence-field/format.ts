@@ -236,6 +236,11 @@ export const MoveIn = Type.Composite(
 	noAdditionalProps,
 );
 
+export interface DetachFields {
+	// Interpreted as false if not set
+	isPostbaseResult?: boolean;
+}
+
 export interface InverseAttachFields {
 	detachIdOverride?: ChangeAtomId;
 }
@@ -247,6 +252,7 @@ export const InverseAttachFields = Type.Object({
 export interface Delete<TNodeChange = NodeChangeType>
 	extends HasRevisionTag,
 		HasMarkFields<TNodeChange>,
+		DetachFields,
 		InverseAttachFields {
 	type: "Delete";
 	id: ChangesetLocalId;
@@ -269,6 +275,7 @@ export const Delete = <Schema extends TSchema>(tNodeChange: Schema) =>
 export interface MoveOut<TNodeChange = NodeChangeType>
 	extends HasRevisionTag,
 		HasMoveId,
+		DetachFields,
 		HasMarkFields<TNodeChange> {
 	type: "MoveOut";
 }
@@ -332,6 +339,7 @@ export interface ReturnFrom<TNodeChange = NodeChangeType>
 	extends HasRevisionTag,
 		HasMoveId,
 		HasMarkFields<TNodeChange>,
+		DetachFields,
 		InverseAttachFields {
 	type: "ReturnFrom";
 

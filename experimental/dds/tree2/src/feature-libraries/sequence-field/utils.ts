@@ -210,6 +210,10 @@ export function markEmptiesCells(mark: Mark<unknown>): boolean {
 	return !areInputCellsEmpty(mark) && areOutputCellsEmpty(mark);
 }
 
+export function markRenamesCells(mark: Mark<unknown>): boolean {
+	return areInputCellsEmpty(mark) && isDetachMark(mark) && (mark.isPostbaseResult ?? false);
+}
+
 export function markFillsCells(mark: Mark<unknown>): boolean {
 	return areInputCellsEmpty(mark) && !areOutputCellsEmpty(mark);
 }
