@@ -406,6 +406,17 @@ describe("SequenceField - Branch postbasing", () => {
 		assert.deepEqual(delta, []);
 	});
 
+	it("[Delete, Revive] ↷ Move", () => {
+		const move = tagChange(Change.move(0, 1, 5), tag1);
+		const del = tagChange(Change.delete(0, 1), tag2);
+		const revive = tagChange(Change.revive(0, 1, { revision: tag2, localId: brand(0) }), tag3)
+		const del2 = rebaseTagged(del, move);
+		const move2 = postbaseTagged(move, del);
+		const revive2 = rebaseTagged(revive, move2);
+		const actual = compose([del2, revive2]);
+		assert.deepEqual(actual, []);
+	});
+
 	it("[Delete AC, Revive AC] ↷ Insert B", () => {
 		const addB = tagChange(Change.insert(1, 1), tag1);
 		const delAC = tagChange(Change.delete(0, 2), tag2);

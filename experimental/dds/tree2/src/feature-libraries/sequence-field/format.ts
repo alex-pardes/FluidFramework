@@ -238,6 +238,7 @@ export const MoveIn = Type.Composite(
 
 export interface DetachFields {
 	// Interpreted as false if not set
+	// TODO: Instead want to know whether the input ID is older or newer than the output ID
 	isPostbaseResult?: boolean;
 }
 

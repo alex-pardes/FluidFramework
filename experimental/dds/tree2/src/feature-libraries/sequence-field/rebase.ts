@@ -369,6 +369,11 @@ function rebaseMark<TNodeChange>(
 	if (markRenamesCells(baseMark)) {
 		// TODO: Should also update lineage
 		assert(isDetachMark(baseMark), "Only detach mark can rename cell");
+		const moveId = getMarkMoveId(baseMark);
+		if (moveId !== undefined && markFollowsMoves(currMark)) {
+			sendMarkToDest(rebasedMark, moveEffects, baseRevision, moveId, baseMark.count);
+			return { count: 0 };
+		}
 		rebasedMark.cellId = getDetachCellId(baseMark, baseIntention);
 	} else if (markEmptiesCells(baseMark)) {
 		const moveId = getMarkMoveId(baseMark);
@@ -422,6 +427,8 @@ function rebaseMark<TNodeChange>(
 		const baseCellId = getDetachCellId(baseMark, baseMarkIntention);
 		rebasedMark = makeDetachedMark(rebasedMark, cloneCellId(baseCellId), mode);
 	} else if (markFillsCells(baseMark)) {
+		// TODO: Also check for moved marks on postbase move in of empty cell
+		// Also need to create lineage for the moved cell
 		if (isMoveMark(baseMark)) {
 			const movedMark = getMovedMark(
 				moveEffects,
