@@ -393,7 +393,7 @@ describe("SequenceField - Branch postbasing", () => {
 		assert.deepEqual(delta, []);
 	});
 
-	it.skip("[Move ABC, Return ABC] ↷ Delete B", () => {
+	it("[Move ABC, Return ABC] ↷ Delete B", () => {
 		const delB = tagChange(Change.delete(1, 1), tag1);
 		const moveABC = tagChange(Change.move(0, 3, 1), tag2);
 		const retABC = tagChange(Change.return(1, 3, 0, { revision: tag2, localId: id0 }), tag4);
@@ -428,5 +428,20 @@ describe("SequenceField - Branch postbasing", () => {
 		const actual = compose([delAC2, revAC2]);
 		const delta = toDelta(actual);
 		assert.deepEqual(delta, []);
+	});
+
+	it("[Move, Return] ↷ Move", () => {
+		const moveT = tagChange(Change.move(0, 1, 2), tag1);
+		const moveA = tagChange(Change.move(0, 1, 3), tag2);
+		const returnA = tagChange(
+			Change.return(3, 1, 0, { revision: tag2, localId: brand(0) }),
+			tag3,
+		);
+
+		const moveT2 = postbaseTagged(moveT, moveA);
+		const returnA2 = rebaseTagged(returnA, moveT2);
+
+		const expected = Change.return(3, 1, 2, { revision: tag2, localId: brand(0) });
+		assert.deepEqual(returnA2.change, expected);
 	});
 });

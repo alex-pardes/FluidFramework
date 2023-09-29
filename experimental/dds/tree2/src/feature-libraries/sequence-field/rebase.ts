@@ -379,6 +379,10 @@ function rebaseMark<TNodeChange>(
 		if (moveId !== undefined) {
 			assert(isMoveMark(baseMark), 0x6f0 /* Only move marks have move IDs */);
 			if (markFollowsMoves(rebasedMark)) {
+				if (mode === RebaseMode.Postbase && rebasedMark.type === "Delete") {
+					// TODO: Send unattach to destination and leave this mark here (skip early return)
+					// TODO: Handle postbasing unattach over same unattach
+				}
 				sendMarkToDest(rebasedMark, moveEffects, baseRevision, moveId, baseMark.count);
 				return { count: 0 };
 			}
