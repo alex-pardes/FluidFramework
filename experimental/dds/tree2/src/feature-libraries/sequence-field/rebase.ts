@@ -426,7 +426,6 @@ function rebaseMark<TNodeChange>(
 		const baseCellId = getDetachCellId(baseMark, baseMarkIntention);
 		rebasedMark = makeDetachedMark(rebasedMark, cloneCellId(baseCellId), mode);
 	} else if (markFillsCells(baseMark)) {
-		// TODO: Also check for moved marks on postbase move in of empty cell
 		// Also need to create lineage for the moved cell
 		if (isMoveMark(baseMark)) {
 			const movedMark = getMovedMark(
@@ -466,31 +465,46 @@ function rebaseMark<TNodeChange>(
 			}
 		}
 		rebasedMark = withoutCellId(rebasedMark);
-	} else if (
-		nodeExistenceState === NodeExistenceState.Alive &&
-		(rebasedMark.type === "MoveOut" || rebasedMark.type === "ReturnFrom") &&
-		rebasedMark.cellId === undefined
-	) {
-		setPairedMarkStatus(
-			moveEffects,
-			CrossFieldTarget.Destination,
-			rebasedMark.revision,
-			rebasedMark.id,
-			rebasedMark.count,
-			PairedMarkUpdate.Reactivated,
-		);
-	} else if (
-		nodeExistenceState === NodeExistenceState.Dead &&
-		(rebasedMark.type === "MoveOut" || rebasedMark.type === "ReturnFrom")
-	) {
-		setPairedMarkStatus(
-			moveEffects,
-			CrossFieldTarget.Destination,
-			rebasedMark.revision,
-			rebasedMark.id,
-			rebasedMark.count,
-			PairedMarkUpdate.Deactivated,
-		);
+	} else {
+		if (baseMark.type === "MoveIn" || baseMark.type === "ReturnTo") {
+			const movedMark = getMovedMark(
+				moveEffects,
+				baseMark.revision ?? baseRevision,
+				baseMark.id,
+				baseMark.count,
+			);
+
+			if (movedMark !== undefined) {
+				return movedMark;
+			}
+		}
+		if (
+			nodeExistenceState === NodeExistenceState.Alive &&
+			(rebasedMark.type === "MoveOut" || rebasedMark.type === "ReturnFrom") &&
+			rebasedMark.cellId === undefined
+		) {
+			// TODO: Shouldn't we also check these when `baseMark` has a cell effect?
+			setPairedMarkStatus(
+				moveEffects,
+				CrossFieldTarget.Destination,
+				rebasedMark.revision,
+				rebasedMark.id,
+				rebasedMark.count,
+				PairedMarkUpdate.Reactivated,
+			);
+		} else if (
+			nodeExistenceState === NodeExistenceState.Dead &&
+			(rebasedMark.type === "MoveOut" || rebasedMark.type === "ReturnFrom")
+		) {
+			setPairedMarkStatus(
+				moveEffects,
+				CrossFieldTarget.Destination,
+				rebasedMark.revision,
+				rebasedMark.id,
+				rebasedMark.count,
+				PairedMarkUpdate.Deactivated,
+			);
+		}
 	}
 	return rebasedMark;
 }
