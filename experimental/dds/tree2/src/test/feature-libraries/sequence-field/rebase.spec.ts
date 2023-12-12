@@ -480,13 +480,20 @@ describe("SequenceField - Rebase", () => {
 	});
 
 	it("revive ↷ same revive (base within curr)", () => {
-		const reviveABC = [Mark.revive(3, { revision: tag1, localId: brand(1) })];
-		const reviveB = [Mark.revive(1, { revision: tag1, localId: brand(2) })];
+		const adjacentCells: SF.IdRange[] = [{ id: brand(1), count: 3 }];
+		const reviveABC = [
+			Mark.revive(3, {
+				revision: tag1,
+				localId: brand(1),
+				adjacentCells,
+			}),
+		];
+		const reviveB = [Mark.revive(1, { revision: tag1, localId: brand(2), adjacentCells })];
 		const actual = rebase(reviveABC, reviveB, tag2);
 		const expected = [
-			Mark.revive(1, { revision: tag1, localId: brand(1) }),
+			Mark.revive(1, { revision: tag1, localId: brand(1), adjacentCells }),
 			Mark.pin(1, brand(2)),
-			Mark.revive(1, { revision: tag1, localId: brand(3) }),
+			Mark.revive(1, { revision: tag1, localId: brand(3), adjacentCells }),
 		];
 		assert.deepEqual(actual, expected);
 	});

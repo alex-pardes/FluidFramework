@@ -624,12 +624,7 @@ function compareCellPositions(
 	const newCellId = getInputCellId(newMark, newIntention, metadata);
 	assert(newCellId !== undefined, 0x71f /* Should have cell ID */);
 	if (baseCellId.revision === newCellId.revision) {
-		const comparison = compareCellsFromSameRevision(
-			baseCellId,
-			baseCellCount,
-			newCellId,
-			newMark.count,
-		);
+		const comparison = compareCellsFromSameRevision(baseCellId, newCellId);
 
 		if (comparison !== undefined) {
 			return comparison;

@@ -444,16 +444,8 @@ export function areOverlappingIdRanges(
 	return (id2 <= id1 && id1 <= lastId2) || (id1 <= id2 && id2 <= lastId1);
 }
 
-export function compareCellsFromSameRevision(
-	cell1: CellId,
-	count1: number,
-	cell2: CellId,
-	count2: number,
-): number | undefined {
+export function compareCellsFromSameRevision(cell1: CellId, cell2: CellId): number | undefined {
 	assert(cell1.revision === cell2.revision, "Expected cells to have the same revision");
-	if (areOverlappingIdRanges(cell1.localId, count1, cell2.localId, count2)) {
-		return cell1.localId - cell2.localId;
-	}
 
 	// Both cells should have the same `adjacentCells`.
 	const adjacentCells = cell1.adjacentCells;
