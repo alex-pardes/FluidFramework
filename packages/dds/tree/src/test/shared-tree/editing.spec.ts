@@ -1163,6 +1163,27 @@ describe("Editing", () => {
 			expectJsonTree([tree1, tree2], [{ foo: [], bar: ["A"] }]);
 		});
 
+		it("can move node within concurrently moved tree", () => {
+			const tree1 = makeTreeFromJson([{ foo: ["a"] }]);
+			const tree2 = tree1.fork();
+
+			tree1.editor.sequenceField(rootField).move(0, 1, 1);
+
+			const listPath: UpPath = {
+				parent: rootNode,
+				parentField: brand("foo"),
+				parentIndex: 0,
+			};
+
+			const fooField = tree2.editor.sequenceField({ parent: listPath, field: brand("") });
+			fooField.move(0, 1, 1);
+
+			tree1.merge(tree2);
+			tree2.rebaseOnto(tree1);
+
+			expectJsonTree([tree1, tree2], [{ foo: ["a"] }]);
+		});
+
 		it("can move different nodes with 3 different fields", () => {
 			const tree = makeTreeFromJson({
 				foo: ["A", "B", "C", "D"],
